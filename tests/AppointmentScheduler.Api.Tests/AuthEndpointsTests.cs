@@ -77,7 +77,7 @@ public class AuthEndpointsTests
         using var factory = new JwtTestFactory();
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/api/widgets");
+        var response = await client.GetAsync("/api/profile/me");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
