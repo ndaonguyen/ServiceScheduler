@@ -2,13 +2,12 @@ using System.Reflection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using AppointmentScheduler.Domain.Widgets;
 
 namespace AppointmentScheduler.Infrastructure.Persistence;
 
 /// <summary>
 /// EF Core unit of work. Inherits the ASP.NET Core Identity schema and adds the application's own
-/// aggregates. This template uses <b>role-based</b> authorization only, so the unused Identity
+/// aggregates. This service uses <b>role-based</b> authorization only, so the unused Identity
 /// satellite tables (per-user/role claims, external logins, user tokens) are mapped out — leaving
 /// just the user store (AspNetUsers), the role store (AspNetRoles), and the user↔role join
 /// (AspNetUserRoles). Entity mappings live in <c>Persistence/Configurations</c> and are picked up
@@ -16,7 +15,6 @@ namespace AppointmentScheduler.Infrastructure.Persistence;
 /// </summary>
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<AppUser>(options)
 {
-    public DbSet<Widget> Widgets => Set<Widget>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -21,16 +21,15 @@ deliberate deploy step (see CI/CD).
 ```
 source/
 ├── AppointmentScheduler.Application/Abstractions/
-│   ├── IWidgetRepository.cs        # persistence port (no EF dependency)
 │   └── ICurrentUser.cs             # authenticated-caller port
+│                                   # (add I<Aggregate>Repository.cs per slice)
 ├── AppointmentScheduler.Infrastructure/
 │   ├── Persistence/
-│   │   ├── AppDbContext.cs         # IdentityDbContext<AppUser> + DbSet<Widget>
+│   │   ├── AppDbContext.cs         # IdentityDbContext<AppUser> + app DbSets
 │   │   ├── AppUser.cs              # IdentityUser
 │   │   ├── AppDbContextFactory.cs  # design-time factory for `dotnet ef`
 │   │   ├── DbInitializer.cs        # Migrate + seed roles/admin (dev)
-│   │   └── Configurations/WidgetConfiguration.cs
-│   ├── Widgets/EfWidgetRepository.cs
+│   │   └── Configurations/         # one IEntityTypeConfiguration<T> per aggregate
 │   ├── Migrations/                 # EF Core migrations (generated)
 │   └── DependencyInjection.cs      # AddDbContext(UseNpgsql)
 └── AppointmentScheduler.Api/
@@ -86,7 +85,7 @@ in `AuthCookies` (`AppointmentScheduler.Api/Security`).
   `Jwt__SigningKey` secret/env var (HS256 needs ≥ 32 bytes).
 - **Roles (RBAC):** `DbInitializer` seeds `admin` + `user`. Endpoints opt in:
   ```csharp
-  app.MapGroup("/api/widgets").RequireAuthorization();                // any authenticated caller
+  group.RequireAuthorization();                                       // any authenticated caller
   group.MapPost("", ...).RequireAuthorization(p => p.RequireRole("admin"));
   ```
 - **`ICurrentUser`** (Application port) exposes `UserId` / `IsInRole` to handlers without a
@@ -122,14 +121,14 @@ docker compose down -v && docker compose up -d   # -v drops the volume; next run
 
 Inspect:
 ```bash
-docker exec appointmentscheduler-postgres psql -U appointmentscheduler -d appointmentscheduler -c "\dt"   # AspNet* + widgets
+docker exec appointmentscheduler-postgres psql -U appointmentscheduler -d appointmentscheduler -c "\dt"   # AspNet* + refresh_tokens
 ```
 
 ---
 
 ## Adding a migration
 
-After changing the model (`WidgetConfiguration`, a new entity, an `AppUser` field):
+After changing the model (a new entity, a new `IEntityTypeConfiguration<T>`, an `AppUser` field):
 
 ```bash
 dotnet ef migrations add <Name> --project source/AppointmentScheduler.Infrastructure --startup-project source/AppointmentScheduler.Api

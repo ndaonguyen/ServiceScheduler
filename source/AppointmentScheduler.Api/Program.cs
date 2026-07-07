@@ -150,10 +150,8 @@ app.UseAuthorization();
 
 // Slice endpoints own their route group, tags, and auth policy internally (see each
 // Map*Endpoints). Auth: /api/auth/* (httpOnly-cookie tokens). Profile: /api/profile/me.
-// Widgets: /api/widgets.
 app.MapAuthEndpoints();
 app.MapProfileEndpoints();
-app.MapWidgetEndpoints();
 
 app.MapGet("/", () => Results.Redirect("/openapi/v1.json"));
 

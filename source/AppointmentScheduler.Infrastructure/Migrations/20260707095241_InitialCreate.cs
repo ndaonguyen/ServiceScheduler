@@ -51,19 +51,6 @@ namespace AppointmentScheduler.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "widgets",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_widgets", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "AspNetUserRoles",
                 columns: table => new
                 {
@@ -97,7 +84,8 @@ namespace AppointmentScheduler.Infrastructure.Migrations
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     revoked_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    replaced_by_token_hash = table.Column<string>(type: "text", nullable: true)
+                    replaced_by_token_hash = table.Column<string>(type: "text", nullable: true),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -152,9 +140,6 @@ namespace AppointmentScheduler.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "refresh_tokens");
-
-            migrationBuilder.DropTable(
-                name: "widgets");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
