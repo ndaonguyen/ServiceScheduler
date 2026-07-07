@@ -1,9 +1,10 @@
-# dotnet-template
+# AppointmentScheduler
 
-A **Clean-Architecture .NET service** template, packaged as a `dotnet new` template. It ships
-vertical-slice CQRS over a lightweight in-process mediator (no MediatR), JWT auth with
-role-based access control, EF Core + PostgreSQL persistence, an optional React + Vite SPA,
-OpenTelemetry observability, health checks, and a GitHub Actions CI/CD pipeline.
+A backend .NET service for scheduling vehicle service appointments across dealerships,
+technicians, and service bays. Clean Architecture with vertical-slice CQRS over a lightweight
+in-process mediator (no MediatR), JWT + cookie auth with RBAC, EF Core + PostgreSQL, OpenTelemetry
+observability, and health checks. No frontend — the API is the product; `/openapi/v1.json` is the
+client contract.
 
 ## Features
 
@@ -12,7 +13,6 @@ OpenTelemetry observability, health checks, and a GitHub Actions CI/CD pipeline.
 - **Auth** — JWT access + refresh tokens, transported as `httpOnly` cookies only, RBAC via
   ASP.NET Core Identity. See [`docs/authentication.md`](docs/authentication.md).
 - **Persistence** — EF Core + PostgreSQL (`Npgsql`); schema owned by EF Core migrations.
-- **Optional React + Vite SPA** — `source/AppointmentScheduler.Api/ClientApp`, toggled via template parameter.
 - **Observability** — OpenTelemetry traces + metrics over OTLP; split liveness/readiness health
   checks (`/health/live`, `/health/ready`).
 - **CI/CD** — GitHub Actions build/test/coverage on every push/PR, GitVersion-based versioning,
@@ -22,17 +22,19 @@ OpenTelemetry observability, health checks, and a GitHub Actions CI/CD pipeline.
 
 - [.NET SDK 10](https://dotnet.microsoft.com/) (pinned by `global.json`, prerelease allowed)
 - [Docker](https://www.docker.com/) (for local PostgreSQL via `docker-compose.yml`)
-- [Node.js](https://nodejs.org/) (only if using the React client)
 
 ## Getting started
 
 ```bash
 dotnet restore && dotnet tool restore
 
-docker compose up -d                      # start local Postgres (empty; EF creates the schema)
-dotnet run --project source/AppointmentScheduler.Api    # serves /health, /api/widgets, /openapi/v1.json
-                                          #   (in Development, auto-applies EF migrations + seeds)
+docker compose up -d                                   # start local Postgres (EF creates the schema)
+dotnet run --project source/AppointmentScheduler.Api   # serves /health, /openapi/v1.json, and API endpoints
+                                                       # (in Development, auto-applies EF migrations + seeds)
 ```
+
+`/` redirects to `/openapi/v1.json` — use that as the API contract for any client or
+`curl`-based test harness.
 
 ### Build & test
 
@@ -41,53 +43,16 @@ dotnet build -c Release
 dotnet test  -c Release
 ```
 
-## Run (backend + frontend)
-
-### Dev mode — hot reload, two terminals
-
-Vite serves the SPA and proxies API calls to the backend, so the browser sees a single origin.
-
-```bash
-# once: trust the local HTTPS cert
-dotnet dev-certs https --trust
-```
-
-**Terminal 1 — backend** (https://localhost:7443, http://localhost:5080):
-```bash
-dotnet run --project source/AppointmentScheduler.Api --launch-profile https
-#  → /health, /api/widgets, /openapi/v1.json
-```
-
-**Terminal 2 — frontend** (http://localhost:5173):
-```bash
-cd source/AppointmentScheduler.Api/ClientApp
-npm install        # first time only
-npm run dev
-```
-
-Open **http://localhost:5173** → the **Widgets** page creates/lists widgets through the API.
-Vite proxies `/api`, `/openapi`, `/health` to the backend (see `vite.config.ts`; override
-the target with `VITE_API_PROXY`).
-
-### Single process — prod-like (one port, no Vite)
-
-`dotnet publish` builds the React app and the API serves it from `wwwroot`:
-
-```bash
-dotnet publish source/AppointmentScheduler.Api -c Release -o ./publish   # runs npm build → wwwroot
-dotnet ./publish/AppointmentScheduler.Api.dll                            # SPA + API on one port
-```
-
-> **API only** (`--client-framework none`): no ClientApp — just run
-> `dotnet run --project source/AppointmentScheduler.Api`; `/` redirects to `/openapi/v1.json`.
-
 ## Project layout
 
 | Path | Purpose |
 |------|---------|
-| `source/<Name>/` | Application & library projects: Domain / Application / Infrastructure / Api |
-| `source/AppointmentScheduler.Api/ClientApp/` | React + Vite SPA (excluded when `--client-framework none`) |
-| `tests/<Name>.Tests/` | Test projects (xUnit + AwesomeAssertions) |
+| `source/AppointmentScheduler.Domain/` | Entities, value objects, domain rules |
+| `source/AppointmentScheduler.Application/` | CQRS handlers, ports, mediator |
+| `source/AppointmentScheduler.Infrastructure/` | EF Core, repositories, Identity, migrations |
+| `source/AppointmentScheduler.Api/` | Minimal-API endpoints, security wiring, `Program.cs` |
+| `tests/AppointmentScheduler.Application.Tests/` | Handler unit tests (xUnit + AwesomeAssertions) |
+| `tests/AppointmentScheduler.Api.Tests/` | Integration tests over `WebApplicationFactory` |
 | `AppointmentScheduler.sln` | Solution file |
 | `Directory.Build.props` | Shared MSBuild settings |
 | `global.json` | Pins .NET SDK 10 (prerelease) |
@@ -96,7 +61,6 @@ dotnet ./publish/AppointmentScheduler.Api.dll                            # SPA +
 | `docker-compose.yml` | Local dev PostgreSQL |
 | `Dockerfile` | Multi-stage container build |
 | `.github/workflows/` | CI (build/test/coverage), PR title lint, deploy pipeline |
-| `.template.config/` | `dotnet new` template metadata |
 | `.claude/skills/` | Reusable Claude Code workflows |
 | `docs/` | Reference docs (`authentication.md`, `database.md`) + artifacts (`prds/`, `plans/`, `adrs/`, `inputs/`) |
 
@@ -131,8 +95,7 @@ curl -X POST "http://localhost:5080/api/auth/register" -H "Content-Type: applica
 curl -c cookies.txt -X POST "http://localhost:5080/api/auth/login" -H "Content-Type: application/json" \
   -d '{"email":"me@x.com","password":"Passw0rd!$"}'
 
-curl -b cookies.txt http://localhost:5080/api/widgets      # 200; POST /api/widgets needs "admin" role
-curl -b cookies.txt http://localhost:5080/api/profile/me   # 200; current user + roles
+curl -b cookies.txt http://localhost:5080/api/profile/me      # 200; current user + roles
 curl -b cookies.txt -c cookies.txt -X POST "http://localhost:5080/api/auth/refresh"
 ```
 
@@ -144,17 +107,6 @@ OpenTelemetry (traces + metrics) is wired up in `Program.cs` and exported over O
 - `/health/live` — liveness, no dependencies
 - `/health/ready` — readiness, checks the database
 - `/health` — liveness alias
-
-## Using this as a `dotnet new` template
-
-```bash
-dotnet new install .
-
-dotnet new ai-service -n PaymentsApi                          # React SPA (default)
-dotnet new ai-service -n PaymentsApi --client-framework none  # Web API only
-```
-
-`AppointmentScheduler` is renamed to your chosen project name throughout.
 
 ## CI/CD
 
