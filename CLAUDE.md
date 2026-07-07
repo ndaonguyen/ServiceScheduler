@@ -10,6 +10,28 @@ Api) with **vertical-slice CQRS** over a lightweight in-process mediator
 (`AppointmentScheduler.Application/Messaging`, no MediatR). No frontend — the API is the product;
 the OpenAPI document at `/openapi/v1.json` is the client contract.
 
+## Architecture principles
+
+Two decisions constrain how new code is organised. Read the ADRs before designing anything
+that crosses a module boundary.
+
+- **Modular monolith** — [ADR-0001](docs/adrs/0001-modular-monolith.md). One deployable
+  process, split into feature modules (Booking, Fleet, Workforce, Catalog, …). Each module
+  owns its aggregates, handlers, EF configurations, endpoint group, and tables. Modules are
+  designed to be **liftable into their own service** later without a rewrite.
+  - **No cross-module type references.** A handler in module A must not `using` module B's
+    Domain or Infrastructure types.
+  - Cross-module reads go through a **query port** in `Application/Abstractions/`; the owning
+    module implements it in its own Infrastructure.
+  - Cross-module writes and side effects go through **events** (below), never direct calls.
+- **Events for inter-module communication** — [ADR-0002](docs/adrs/0002-events-for-inter-module-communication.md).
+  Modules publish domain events (past tense, `AppointmentConfirmed`); interested modules react.
+  Publishing uses the `IEventPublisher` port (Application) + a **post-commit outbox dispatcher**
+  in Infrastructure. When a module is extracted, the in-process dispatcher is swapped for a
+  message bus — event records remain the contract. Synchronous cross-module calls are only
+  allowed for read-only queries where the caller must have the answer to continue, and never
+  chained more than one deep.
+
 > **Persistence:** EF Core + **PostgreSQL** (`Npgsql`). `AppDbContext` lives in
 > `AppointmentScheduler.Infrastructure/Persistence`; slices persist through it via repositories
 > whose ports live in Application (`Abstractions/I*Repository.cs`) and are implemented in
@@ -54,17 +76,22 @@ the OpenAPI document at `/openapi/v1.json` is the client contract.
 > (`TestWebAppFactory.UseTestAuthentication`); `AuthEndpointsTests` exercises the real cookie/JWT
 > pipeline end-to-end.
 
-## Layer boundaries
+## Layers within a module
 
-- **Domain** — entities, value objects, domain rules. No framework or persistence references.
-- **Application** — CQRS request/handler pairs (`Features/<Slice>/<Verb>.cs`), ports
-  (`Abstractions/I*.cs`) that Infrastructure implements, and the in-process mediator
-  (`Messaging/Mediator.cs`, `ISender`, `IRequestHandler<TRequest,TResponse>`).
-- **Infrastructure** — EF Core `AppDbContext`, `IEntityTypeConfiguration<T>` per aggregate,
-  repository implementations, Identity wiring, `RefreshTokenService`, `DbInitializer`.
-- **Api** — minimal-API endpoint groups (`Endpoints/*Endpoints.cs`, one file per slice),
-  security wiring (`Security/*`), `Program.cs` composition. Endpoints call `ISender.Send(...)`;
-  no business logic inline.
+Each module (feature slice) is structured the same way across the 4 projects:
+
+- **Domain** — entities, value objects, domain rules, domain events. No framework or
+  persistence references. `Domain/<Module>/`.
+- **Application** — CQRS request/handler pairs (`Features/<Module>/<Verb>.cs`), event handlers
+  (`Features/<Module>/Events/`), ports (`Abstractions/I*.cs`) that Infrastructure implements,
+  and the in-process mediator (`Messaging/Mediator.cs`, `ISender`,
+  `IRequestHandler<TRequest,TResponse>`).
+- **Infrastructure** — EF Core `AppDbContext`, `IEntityTypeConfiguration<T>` per aggregate
+  (`Persistence/Configurations/`), repository implementations (`<Module>/`), Identity wiring,
+  `RefreshTokenService`, `DbInitializer`, event dispatcher.
+- **Api** — minimal-API endpoint groups (`Endpoints/<Module>Endpoints.cs`, one file per
+  module), security wiring (`Security/*`), `Program.cs` composition. Endpoints call
+  `ISender.Send(...)`; no business logic inline.
 
 ## Testing
 
@@ -79,11 +106,16 @@ the OpenAPI document at `/openapi/v1.json` is the client contract.
 ## Conventions
 
 - **Namespaces mirror folders**; one type per file where practical.
-- **Endpoints** live in `Endpoints/<Slice>Endpoints.cs` as an extension method
+- **Endpoints** live in `Endpoints/<Module>Endpoints.cs` as an extension method
   `MapXxxEndpoints(this IEndpointRouteBuilder app)`; register in `Program.cs`.
-- **Handler naming**: `Features/<Slice>/<Verb><Slice>.cs` (e.g. `CreateWidget.cs`), with the
-  request record, response record, and handler in the same file.
+- **Handler naming**: `Features/<Module>/<Verb><Aggregate>.cs` (e.g. `RequestAppointment.cs`),
+  with the request record, response record, and handler in the same file.
+- **Event naming**: past tense, one record per event, in `Features/<Module>/Events/`
+  (e.g. `AppointmentConfirmed.cs`). Event handlers live in the **consuming** module under
+  `Features/<ConsumerModule>/Events/On<Event>.cs`.
 - **EF configurations** in `Infrastructure/Persistence/Configurations/<Aggregate>Configuration.cs`;
   column names snake_case.
 - **Nothing in Application references Infrastructure or Api**; enforce dependency direction by
   the csproj `ProjectReference` graph.
+- **Nothing in module A references module B's Domain/Infrastructure types** — see
+  [ADR-0001](docs/adrs/0001-modular-monolith.md).
