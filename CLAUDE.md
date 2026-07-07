@@ -10,20 +10,17 @@ Api) with **vertical-slice CQRS** over a lightweight in-process mediator
 (`AppointmentScheduler.Application/Messaging`, no MediatR). No frontend — the API is the product;
 the OpenAPI document at `/openapi/v1.json` is the client contract.
 
-> **Status:** The template's example `Widgets` slice (Domain/Application/Infrastructure/Api +
-> tests + EF configuration + `InitialCreate` migration) is still present as reference
-> scaffolding. It is scheduled for removal as the Appointment domain is introduced.
-
 > **Persistence:** EF Core + **PostgreSQL** (`Npgsql`). `AppDbContext` lives in
 > `AppointmentScheduler.Infrastructure/Persistence`; slices persist through it via repositories
-> whose ports live in Application (e.g. `IWidgetRepository` → `EfWidgetRepository`). Connection
-> string key `ConnectionStrings:AppDb` (appsettings + env). Local Postgres via `docker-compose.yml`.
+> whose ports live in Application (`Abstractions/I*Repository.cs`) and are implemented in
+> Infrastructure. Connection string key `ConnectionStrings:AppDb` (appsettings + env). Local
+> Postgres via `docker-compose.yml`.
 >
 > **Schema migrations:** owned by **EF Core migrations** (`dotnet-ef` in the tool manifest).
 > Migration code lives in `source/AppointmentScheduler.Infrastructure/Migrations/`; the design-time
 > context is built by `AppDbContextFactory` (override the connection with the
-> `AppDb__ConnectionString` env var). The initial migration covers the example Widget slice **and
-> ASP.NET Core Identity** tables (Identity is EF-migration-native). Add a migration with
+> `AppDb__ConnectionString` env var). The initial migration covers the **ASP.NET Core Identity**
+> tables (Identity is EF-migration-native). Add a migration with
 > `dotnet ef migrations add <Name> --project source/AppointmentScheduler.Infrastructure
 > --startup-project source/AppointmentScheduler.Api`; commit the generated files. Apply with
 > `dotnet ef database update` (same project flags). **In Development the API auto-migrates and
