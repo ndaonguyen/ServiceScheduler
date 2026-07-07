@@ -92,4 +92,4 @@ Use `Explore` agents (up to 3 in parallel) scoped to the affected areas. For eac
 - Identify existing patterns, utilities, and abstractions to reuse.
 - Note the layer (`Domain` / `Application` / `Infrastructure` / `Api` / `ClientApp`) each change belongs in.
 - If auth-related: check `AuthCookies`, `AuthEndpoints`, `docs/authentication.md`.
-- If schema-related: note that EF migrations are schema-of-record (`source/ServiceScheduler.Infrastructure/Migrations/`) — a plan touching entities must include a migration step.
+- If schema-related: note that EF migrations are schema-of-record (`source/AppointmentScheduler.Infrastructure/Migrations/`) — a plan touching entities must include a migration step.

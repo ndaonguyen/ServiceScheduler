@@ -12,8 +12,8 @@ RUN apt-get update \
 
 COPY global.json Directory.Build.props ./
 COPY source/ source/
-RUN dotnet restore source/ServiceScheduler.Api/ServiceScheduler.Api.csproj
-RUN dotnet publish source/ServiceScheduler.Api/ServiceScheduler.Api.csproj \
+RUN dotnet restore source/AppointmentScheduler.Api/AppointmentScheduler.Api.csproj
+RUN dotnet publish source/AppointmentScheduler.Api/AppointmentScheduler.Api.csproj \
     -c Release -o /app /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
@@ -23,7 +23,7 @@ COPY --from=build /app ./
 USER app
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
-ENTRYPOINT ["dotnet", "ServiceScheduler.Api.dll"]
+ENTRYPOINT ["dotnet", "AppointmentScheduler.Api.dll"]
 
 # Healthchecks handled by the orchestrator (e.g. ECS/k8s): liveness probe -> /health/live,
 # readiness probe -> /health/ready (checks the database). /health is a liveness alias.

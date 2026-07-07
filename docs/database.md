@@ -7,7 +7,7 @@ plus the app's own aggregates.
 | Concern | Owner |
 |---------|-------|
 | Runtime queries | EF Core + Npgsql (`AppDbContext`) |
-| Schema (create/alter tables) | EF Core **migrations** (`source/ServiceScheduler.Infrastructure/Migrations`) |
+| Schema (create/alter tables) | EF Core **migrations** (`source/AppointmentScheduler.Infrastructure/Migrations`) |
 | Users / roles / login | ASP.NET Core Identity (tables in the same `AppDbContext`) |
 
 The API auto-applies migrations + seeds roles **in Development only** (`Program.cs` →
@@ -20,10 +20,10 @@ deliberate deploy step (see CI/CD).
 
 ```
 source/
-├── ServiceScheduler.Application/Abstractions/
+├── AppointmentScheduler.Application/Abstractions/
 │   ├── IWidgetRepository.cs        # persistence port (no EF dependency)
 │   └── ICurrentUser.cs             # authenticated-caller port
-├── ServiceScheduler.Infrastructure/
+├── AppointmentScheduler.Infrastructure/
 │   ├── Persistence/
 │   │   ├── AppDbContext.cs         # IdentityDbContext<AppUser> + DbSet<Widget>
 │   │   ├── AppUser.cs              # IdentityUser
@@ -33,7 +33,7 @@ source/
 │   ├── Widgets/EfWidgetRepository.cs
 │   ├── Migrations/                 # EF Core migrations (generated)
 │   └── DependencyInjection.cs      # AddDbContext(UseNpgsql)
-└── ServiceScheduler.Api/
+└── AppointmentScheduler.Api/
     ├── Security/CurrentUser.cs     # ICurrentUser over HttpContext.User
     ├── Security/TokenService.cs    # ITokenService — issues HS256 JWTs
     └── Program.cs                  # Identity user store (AddIdentityCore) + JWT bearer scheme
@@ -69,9 +69,9 @@ delivered as `HttpOnly; Secure; SameSite=Strict` cookies — never in the body, 
 
 **Using a token:** nothing to do — the browser attaches the `httpOnly` cookies automatically. The
 access cookie is read server-side by `JwtBearerEvents.OnMessageReceived`; cookie flags/scoping live
-in `AuthCookies` (`ServiceScheduler.Api/Security`).
+in `AuthCookies` (`AppointmentScheduler.Api/Security`).
 
-- **Issuing** — `ITokenService` / `TokenService` (`ServiceScheduler.Api/Security`) signs an HS256 JWT with
+- **Issuing** — `ITokenService` / `TokenService` (`AppointmentScheduler.Api/Security`) signs an HS256 JWT with
   claims `sub` + `NameIdentifier` (user id), `name`/`email`, and one `role` claim per role. Expiry
   is `Jwt:AccessTokenMinutes` from now (via `TimeProvider`).
 - **Validating** — `Program.cs` registers `AddJwtBearer` with issuer/audience/lifetime/signing-key
@@ -107,12 +107,12 @@ in `AuthCookies` (`ServiceScheduler.Api/Security`).
 
 ```bash
 docker compose up -d                       # Postgres on :5432
-dotnet run --project source/ServiceScheduler.Api     # Development → auto-migrates + seeds roles/admin
+dotnet run --project source/AppointmentScheduler.Api     # Development → auto-migrates + seeds roles/admin
 ```
 
 Default local connection (`appsettings.json`):
 ```
-Host=localhost;Port=5432;Database=servicescheduler;Username=servicescheduler;Password=servicescheduler
+Host=localhost;Port=5432;Database=appointmentscheduler;Username=appointmentscheduler;Password=appointmentscheduler
 ```
 
 Reset local DB:
@@ -122,7 +122,7 @@ docker compose down -v && docker compose up -d   # -v drops the volume; next run
 
 Inspect:
 ```bash
-docker exec servicescheduler-postgres psql -U servicescheduler -d servicescheduler -c "\dt"   # AspNet* + widgets
+docker exec appointmentscheduler-postgres psql -U appointmentscheduler -d appointmentscheduler -c "\dt"   # AspNet* + widgets
 ```
 
 ---
@@ -132,8 +132,8 @@ docker exec servicescheduler-postgres psql -U servicescheduler -d serviceschedul
 After changing the model (`WidgetConfiguration`, a new entity, an `AppUser` field):
 
 ```bash
-dotnet ef migrations add <Name> --project source/ServiceScheduler.Infrastructure --startup-project source/ServiceScheduler.Api
-dotnet ef database update       --project source/ServiceScheduler.Infrastructure --startup-project source/ServiceScheduler.Api
+dotnet ef migrations add <Name> --project source/AppointmentScheduler.Infrastructure --startup-project source/AppointmentScheduler.Api
+dotnet ef database update       --project source/AppointmentScheduler.Infrastructure --startup-project source/AppointmentScheduler.Api
 ```
 `dotnet-ef` is in the tool manifest (`dotnet tool restore`). The design-time factory supplies the
 connection; override with `AppDb__ConnectionString` if needed.
@@ -153,7 +153,7 @@ Set `DB_CONNECTION_STRING` per environment (GitHub → Settings → Environments
 
 ## Switching provider
 
-1. `ServiceScheduler.Infrastructure` — swap `Npgsql.EntityFrameworkCore.PostgreSQL` for the matching EF
+1. `AppointmentScheduler.Infrastructure` — swap `Npgsql.EntityFrameworkCore.PostgreSQL` for the matching EF
    provider; change `UseNpgsql` → `UseSqlServer` / etc. in `DependencyInjection.cs` and
    `AppDbContextFactory.cs`.
 2. Delete and regenerate the migrations against the new provider.

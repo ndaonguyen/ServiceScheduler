@@ -8,11 +8,11 @@ OpenTelemetry observability, health checks, and a GitHub Actions CI/CD pipeline.
 ## Features
 
 - **Clean Architecture** — Domain / Application / Infrastructure / Api projects, one per layer.
-- **CQRS** via a lightweight in-process mediator (`ServiceScheduler.Application/Messaging`) — no MediatR.
+- **CQRS** via a lightweight in-process mediator (`AppointmentScheduler.Application/Messaging`) — no MediatR.
 - **Auth** — JWT access + refresh tokens, transported as `httpOnly` cookies only, RBAC via
   ASP.NET Core Identity. See [`docs/authentication.md`](docs/authentication.md).
 - **Persistence** — EF Core + PostgreSQL (`Npgsql`); schema owned by EF Core migrations.
-- **Optional React + Vite SPA** — `source/ServiceScheduler.Api/ClientApp`, toggled via template parameter.
+- **Optional React + Vite SPA** — `source/AppointmentScheduler.Api/ClientApp`, toggled via template parameter.
 - **Observability** — OpenTelemetry traces + metrics over OTLP; split liveness/readiness health
   checks (`/health/live`, `/health/ready`).
 - **CI/CD** — GitHub Actions build/test/coverage on every push/PR, GitVersion-based versioning,
@@ -30,7 +30,7 @@ OpenTelemetry observability, health checks, and a GitHub Actions CI/CD pipeline.
 dotnet restore && dotnet tool restore
 
 docker compose up -d                      # start local Postgres (empty; EF creates the schema)
-dotnet run --project source/ServiceScheduler.Api    # serves /health, /api/widgets, /openapi/v1.json
+dotnet run --project source/AppointmentScheduler.Api    # serves /health, /api/widgets, /openapi/v1.json
                                           #   (in Development, auto-applies EF migrations + seeds)
 ```
 
@@ -54,13 +54,13 @@ dotnet dev-certs https --trust
 
 **Terminal 1 — backend** (https://localhost:7443, http://localhost:5080):
 ```bash
-dotnet run --project source/ServiceScheduler.Api --launch-profile https
+dotnet run --project source/AppointmentScheduler.Api --launch-profile https
 #  → /health, /api/widgets, /openapi/v1.json
 ```
 
 **Terminal 2 — frontend** (http://localhost:5173):
 ```bash
-cd source/ServiceScheduler.Api/ClientApp
+cd source/AppointmentScheduler.Api/ClientApp
 npm install        # first time only
 npm run dev
 ```
@@ -74,21 +74,21 @@ the target with `VITE_API_PROXY`).
 `dotnet publish` builds the React app and the API serves it from `wwwroot`:
 
 ```bash
-dotnet publish source/ServiceScheduler.Api -c Release -o ./publish   # runs npm build → wwwroot
-dotnet ./publish/ServiceScheduler.Api.dll                            # SPA + API on one port
+dotnet publish source/AppointmentScheduler.Api -c Release -o ./publish   # runs npm build → wwwroot
+dotnet ./publish/AppointmentScheduler.Api.dll                            # SPA + API on one port
 ```
 
 > **API only** (`--client-framework none`): no ClientApp — just run
-> `dotnet run --project source/ServiceScheduler.Api`; `/` redirects to `/openapi/v1.json`.
+> `dotnet run --project source/AppointmentScheduler.Api`; `/` redirects to `/openapi/v1.json`.
 
 ## Project layout
 
 | Path | Purpose |
 |------|---------|
 | `source/<Name>/` | Application & library projects: Domain / Application / Infrastructure / Api |
-| `source/ServiceScheduler.Api/ClientApp/` | React + Vite SPA (excluded when `--client-framework none`) |
+| `source/AppointmentScheduler.Api/ClientApp/` | React + Vite SPA (excluded when `--client-framework none`) |
 | `tests/<Name>.Tests/` | Test projects (xUnit + AwesomeAssertions) |
-| `ServiceScheduler.sln` | Solution file |
+| `AppointmentScheduler.sln` | Solution file |
 | `Directory.Build.props` | Shared MSBuild settings |
 | `global.json` | Pins .NET SDK 10 (prerelease) |
 | `GitVersion.yml` | Versioning config (GitVersion 6, GitHubFlow) |
@@ -102,17 +102,17 @@ dotnet ./publish/ServiceScheduler.Api.dll                            # SPA + API
 
 ## Database migrations
 
-Schema is owned by EF Core migrations (`source/ServiceScheduler.Infrastructure/Migrations`).
+Schema is owned by EF Core migrations (`source/AppointmentScheduler.Infrastructure/Migrations`).
 
 ```bash
 # add a migration after changing entities/DbContext
 dotnet ef migrations add Describe_change \
-  --project source/ServiceScheduler.Infrastructure --startup-project source/ServiceScheduler.Api
+  --project source/AppointmentScheduler.Infrastructure --startup-project source/AppointmentScheduler.Api
 
 # apply pending migrations manually (Development does this automatically on startup)
-export AppDb__ConnectionString="Host=localhost;Port=5432;Database=servicescheduler;Username=servicescheduler;Password=servicescheduler"
+export AppDb__ConnectionString="Host=localhost;Port=5432;Database=appointmentscheduler;Username=appointmentscheduler;Password=appointmentscheduler"
 dotnet ef database update \
-  --project source/ServiceScheduler.Infrastructure --startup-project source/ServiceScheduler.Api
+  --project source/AppointmentScheduler.Infrastructure --startup-project source/AppointmentScheduler.Api
 ```
 
 In production, migrations run as a deliberate deploy step (see `.github/workflows/deploy.yaml`),
@@ -154,7 +154,7 @@ dotnet new ai-service -n PaymentsApi                          # React SPA (defau
 dotnet new ai-service -n PaymentsApi --client-framework none  # Web API only
 ```
 
-`ServiceScheduler` is renamed to your chosen project name throughout.
+`AppointmentScheduler` is renamed to your chosen project name throughout.
 
 ## CI/CD
 

@@ -95,8 +95,8 @@ jobs:
       - name: Apply EF Core migrations
         run: >
           dotnet ef database update
-          --project source/ServiceScheduler.Infrastructure
-          --startup-project source/ServiceScheduler.Api
+          --project source/AppointmentScheduler.Infrastructure
+          --startup-project source/AppointmentScheduler.Api
         env:
           AppDb__ConnectionString: ${{ secrets.DB_CONNECTION_STRING }}
 

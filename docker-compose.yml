@@ -3,11 +3,11 @@
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: servicescheduler-postgres
+    container_name: appointmentscheduler-postgres
     environment:
-      POSTGRES_DB: servicescheduler
-      POSTGRES_USER: servicescheduler
-      POSTGRES_PASSWORD: servicescheduler
+      POSTGRES_DB: appointmentscheduler
+      POSTGRES_USER: appointmentscheduler
+      POSTGRES_PASSWORD: appointmentscheduler
     ports:
       - "5432:5432"
     volumes:
@@ -15,7 +15,7 @@ services:
       # Schema is created by EF Core migrations (the API auto-migrates in Development;
       # otherwise run `dotnet ef database update`). No init scripts here.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U servicescheduler -d servicescheduler"]
+      test: ["CMD-SHELL", "pg_isready -U appointmentscheduler -d appointmentscheduler"]
       interval: 5s
       timeout: 5s
       retries: 5

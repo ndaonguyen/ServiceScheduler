@@ -84,5 +84,5 @@ For each change in the plan (in order):
 - If entities changed, add the migration **once**, before the final verification pass:
   ```
   dotnet ef migrations add <DescriptiveName> \
-    --project source/ServiceScheduler.Infrastructure --startup-project source/ServiceScheduler.Api
+    --project source/AppointmentScheduler.Infrastructure --startup-project source/AppointmentScheduler.Api
   ```

@@ -20,7 +20,7 @@ One sentence: what changes and why.
 ### Domain / Application / Infrastructure / Api / ClientApp
 - **File**: `source/…/Foo.cs` — <what to add/modify>
 - **New file**: `source/…/Bar.cs` — <purpose>
-- **EF migration** (if entities change): `dotnet ef migrations add <Name> --project source/ServiceScheduler.Infrastructure --startup-project source/ServiceScheduler.Api`
+- **EF migration** (if entities change): `dotnet ef migrations add <Name> --project source/AppointmentScheduler.Infrastructure --startup-project source/AppointmentScheduler.Api`
 
 <Code snippets showing key signatures/contracts only — not full implementation.>
 
