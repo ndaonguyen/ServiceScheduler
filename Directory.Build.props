@@ -1,0 +1,9 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <!-- Set this variable to be available inside every project build. -->
+    <RepositoryRootDir>$(MSBuildThisFileDirectory)</RepositoryRootDir>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PublishDir>$(MSBuildProjectDirectory)\..\..\output\apps\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)</PublishDir>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,14 @@
+**/bin
+**/obj
+**/node_modules
+**/ClientApp/build
+**/ClientApp/dist
+output
+.git
+.github
+.idea
+.vs
+.claude
+tests
+**/appsettings.Secrets.json
+README.md

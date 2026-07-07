@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    env:
+      CONFIGURATION: Release
+      TEST_RESULTS_DIR: ./output/test-results
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # GitVersion needs full history
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3
+        with:
+          versionSpec: '6.x'
+
+      - name: Determine version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v3
+        with:
+          useConfigFile: true
+
+      - name: Restore
+        run: dotnet restore && dotnet tool restore
+
+      - name: Build
+        run: |
+          dotnet build --no-restore --configuration $CONFIGURATION \
+            -p:ContinuousIntegrationBuild=True \
+            -p:DeterministicSourcePaths=True \
+            -p:RepositoryUrl=https://github.com/${{ github.repository }} \
+            -p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
+            -p:FileVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
+            -p:InformationalVersion=${{ steps.gitversion.outputs.informationalVersion }}
+
+      - name: Test
+        run: >
+          dotnet test --configuration $CONFIGURATION --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory $TEST_RESULTS_DIR
+          --collect:"XPlat Code Coverage"
+
+      - name: Annotate test results
+        if: success() || failure()
+        uses: dorny/test-reporter@v2
+        with:
+          name: Test Results
+          path: ${{ env.TEST_RESULTS_DIR }}/**/*.trx
+          reporter: dotnet-trx

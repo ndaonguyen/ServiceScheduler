@@ -1,0 +1,45 @@
+# Build Results
+[Bb]in/
+[Oo]bj/
+output/
+
+# Log Files
+*.log
+
+# Rider/IntelliJ/etc .idea folder
+.idea/
+*.sln.iml
+
+# Visual Studio per-user state
+.vs/
+*.suo
+*.user
+
+# DotSettings
+*.DotSettings.user
+
+# NuGet
+.nuget/packages
+
+# SonarQube
+.sonarqube
+
+target
+.fake
+.direnv
+
+**/appsettings.Secrets.json
+
+# React ClientApp
+**/ClientApp/node_modules/
+**/ClientApp/build/
+**/ClientApp/dist/
+.vs/VSWorkspaceState.json
+.vs/slnx.sqlite
+.vs/AITemplate/CopilotIndices/18.7.1244.59975/SemanticSymbols.db
+.vs/AITemplate/CopilotIndices/18.7.1244.59975/CodeChunks.db
+.vs/AITemplate.slnx/v18/DocumentLayout.json
+.vs/AITemplate.slnx/v18/DocumentLayout.backup.json
+.vs/AITemplate.slnx/v18/.wsuo
+.vs/AITemplate.slnx/FileContentIndex/170e97cc-9746-410a-ba85-a31deb068cec.vsidx
+*.vsidx
