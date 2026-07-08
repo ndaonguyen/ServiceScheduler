@@ -19,7 +19,19 @@ A roadmap entry means "we intend to build this and here is the concrete signal t
 
 Ordered by likely sequencing. Sequencing is guidance, not commitment.
 
-### 1. Notifications module
+### 1. Booking — availability preview (same-module extension, not a new module)
+
+**What:** a read-only endpoint (e.g. `GET /api/appointments/availability?dealershipId=…&serviceTypeId=…&date=…`) that returns free time slots so the client can render a slot picker, instead of submitting a specific `requestedStart` and getting a 409 back if it's busy. Purely additive to the existing Booking module — no new aggregate, no new module.
+
+**Why:** the initial slice ships a *request-and-hope* UX — the client submits a specific time, server returns 201 or 409. Fine for internal / back-office use where the operator knows the schedule roughly; poor for self-service customers over the web or mobile. An availability endpoint lets the client display available times up front so the user picks a known-free slot.
+
+**Why it deserves its own PRD:** non-trivial to implement correctly. Requires computing gaps in the union of technician-and-bay availability across a day, honouring `ServiceType.Duration` and the half-open-interval rule from BR-03. Effectively interval subtraction against the busy set from all confirmed appointments at the dealership. Also introduces cache-invalidation questions once concurrent bookings start writing to the busy set. Not hard, but not free.
+
+**Trigger to promote to PRD:** the first client (web or mobile) needs to display available times before booking, or feedback from initial users indicates the 409-retry UX is a real problem.
+
+**Depends on:** initial Booking slice merged. Nothing else.
+
+### 2. Notifications module
 
 **What:** send email / SMS on booking events. Confirmation on `AppointmentConfirmed` first; reminders and status-change notifications later.
 
@@ -29,7 +41,7 @@ Ordered by likely sequencing. Sequencing is guidance, not commitment.
 
 **Depends on:** Booking slice merged (produces the `AppointmentConfirmed` event). The Notifications PRD also stands up the **Outbox Pattern** per [`adrs/0002-events-for-inter-module-communication.md`](adrs/0002-events-for-inter-module-communication.md) — the outbox lands with its first consumer, not speculatively.
 
-### 2. Audit module
+### 3. Audit module
 
 **What:** append-only log of business-relevant events (bookings, role changes, sensitive reads) with retention potentially longer than live data.
 
@@ -39,7 +51,7 @@ Ordered by likely sequencing. Sequencing is guidance, not commitment.
 
 **Depends on:** outbox pattern in place. Audit consumes the same event stream Notifications subscribes to, which validates the fan-out design.
 
-### 3. Billing / Invoicing module
+### 4. Billing / Invoicing module
 
 **What:** invoicing customers for completed service, payment capture, refunds.
 
@@ -49,7 +61,7 @@ Ordered by likely sequencing. Sequencing is guidance, not commitment.
 
 **Depends on:** nothing technical; Notifications and Audit will likely precede it for lower-risk delivery sequencing.
 
-### 4. Reporting / Analytics
+### 5. Reporting / Analytics
 
 **What:** dashboards, exports, or aggregated views for dealerships and admins — e.g. bay utilization, technician throughput, no-show rates.
 
