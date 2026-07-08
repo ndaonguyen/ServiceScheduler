@@ -152,6 +152,7 @@ app.UseAuthorization();
 // Map*Endpoints). Auth: /api/auth/* (httpOnly-cookie tokens). Profile: /api/profile/me.
 app.MapAuthEndpoints();
 app.MapProfileEndpoints();
+app.MapBookingEndpoints();
 
 app.MapGet("/", () => Results.Redirect("/openapi/v1.json"));
 

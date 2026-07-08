@@ -2,6 +2,10 @@ using System.Reflection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using AppointmentScheduler.Domain.Booking;
+using AppointmentScheduler.Domain.Catalog;
+using AppointmentScheduler.Domain.Fleet;
+using AppointmentScheduler.Domain.Workforce;
 
 namespace AppointmentScheduler.Infrastructure.Persistence;
 
@@ -16,6 +20,21 @@ namespace AppointmentScheduler.Infrastructure.Persistence;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<AppUser>(options)
 {
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    // Booking module
+    public DbSet<Appointment> Appointments => Set<Appointment>();
+
+    // Fleet module
+    public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+    public DbSet<Dealership> Dealerships => Set<Dealership>();
+    public DbSet<ServiceBay> ServiceBays => Set<ServiceBay>();
+
+    // Workforce module
+    public DbSet<Technician> Technicians => Set<Technician>();
+    public DbSet<TechnicianQualification> TechnicianQualifications => Set<TechnicianQualification>();
+
+    // Catalog module
+    public DbSet<ServiceType> ServiceTypes => Set<ServiceType>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
