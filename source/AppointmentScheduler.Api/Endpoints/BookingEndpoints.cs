@@ -19,7 +19,17 @@ public static class BookingEndpoints
         group.MapPost("", async (RequestAppointment body, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(body, ct);
-            return Results.Created($"/api/appointments/{result.AppointmentId}", result);
+            if (result.IsSuccess)
+            {
+                return Results.Created($"/api/appointments/{result.Value.AppointmentId}", result.Value);
+            }
+
+            // Every failure this handler produces is a BookingError carrying the PRD §8 stable code
+            // and HTTP status; render the { code, message } body from it (PRD §8 error contract).
+            var error = result.Errors.OfType<BookingError>().First();
+            return Results.Json(
+                new { code = error.Code, message = error.Message },
+                statusCode: error.HttpStatus);
         })
         .WithName("RequestAppointment")
         .RequireAuthorization();
