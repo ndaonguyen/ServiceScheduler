@@ -9,6 +9,11 @@ namespace AppointmentScheduler.Application.Abstractions;
 /// </summary>
 public interface IAppointmentRepository
 {
+    /// <summary>
+    /// Persists the appointment. Throws
+    /// <see cref="Features.Booking.AppointmentSlotConflictException"/> when the insert is rejected by
+    /// the no-overlap constraint (a concurrent booking took the same bay/technician for the window).
+    /// </summary>
     Task AddAsync(Appointment appointment, CancellationToken ct = default);
 
     /// <summary>

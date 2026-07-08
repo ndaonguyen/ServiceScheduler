@@ -14,6 +14,8 @@ public class RequestAppointmentTests
     private static readonly Guid ServiceTypeId = Guid.NewGuid();
     private static readonly Guid BayId = Guid.NewGuid();
     private static readonly Guid TechId = Guid.NewGuid();
+    private static readonly Guid Bay2Id = Guid.NewGuid();
+    private static readonly Guid Tech2Id = Guid.NewGuid();
     private const string OwnerId = "user-123";
 
     // A fixed "now" safely before the fixtures' requestedStart, so the VR-06 past-start guard does
@@ -244,6 +246,68 @@ public class RequestAppointmentTests
         repo.Added.Should().NotBeNull();
     }
 
+    // #7 / AT: insert loses the race on the bay, retry with the next free bay succeeds -> 201.
+    [Fact]
+    public async Task Bay_conflict_then_retry_succeeds_returns_201_with_next_bay()
+    {
+        var repo = new FakeAppointmentRepository { ConflictOnFirstInsert = BookingResource.ServiceBay };
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45),
+            bays: [new BayInfo(BayId, "Bay 3"), new BayInfo(Bay2Id, "Bay 4")]);
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        repo.AddCalls.Should().Be(2);
+        result.Value.ServiceBay.Id.Should().Be(Bay2Id);
+        repo.Added!.ServiceBayId.Should().Be(Bay2Id);
+    }
+
+    // #7 / AT: insert loses the race on the technician, retry with the next free technician succeeds -> 201.
+    [Fact]
+    public async Task Technician_conflict_then_retry_succeeds_returns_201_with_next_technician()
+    {
+        var repo = new FakeAppointmentRepository { ConflictOnFirstInsert = BookingResource.Technician };
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45),
+            technicians: [new TechnicianInfo(TechId, "Alex Chen"), new TechnicianInfo(Tech2Id, "Sam Lee")]);
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        repo.AddCalls.Should().Be(2);
+        result.Value.Technician.Id.Should().Be(Tech2Id);
+        repo.Added!.TechnicianId.Should().Be(Tech2Id);
+    }
+
+    // #7 / AT: bay conflict with no other free bay -> 409 NO_BAY_AVAILABLE; nothing persisted.
+    [Fact]
+    public async Task Bay_conflict_with_no_other_bay_returns_409_NO_BAY_AVAILABLE()
+    {
+        var repo = new FakeAppointmentRepository { ConflictOnFirstInsert = BookingResource.ServiceBay };
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45)); // single bay
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart), CancellationToken.None);
+
+        ShouldFailWith(result, "NO_BAY_AVAILABLE", 409);
+        repo.Added.Should().BeNull();
+    }
+
+    // #7 / AT: technician conflict with no other free technician -> 409 NO_QUALIFIED_TECHNICIAN.
+    [Fact]
+    public async Task Technician_conflict_with_no_other_technician_returns_409_NO_QUALIFIED_TECHNICIAN()
+    {
+        var repo = new FakeAppointmentRepository { ConflictOnFirstInsert = BookingResource.Technician };
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45)); // single technician
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart), CancellationToken.None);
+
+        ShouldFailWith(result, "NO_QUALIFIED_TECHNICIAN", 409);
+        repo.Added.Should().BeNull();
+    }
+
     private static void ShouldFailWith(Result<RequestAppointmentResponse> result, string code, int httpStatus)
     {
         result.IsFailed.Should().BeTrue();
@@ -259,13 +323,15 @@ public class RequestAppointmentTests
         bool noServiceType = false,
         bool noDealership = false,
         bool noTechnicians = false,
-        VehicleOwnership ownership = VehicleOwnership.Owned) =>
+        VehicleOwnership ownership = VehicleOwnership.Owned,
+        IReadOnlyList<BayInfo>? bays = null,
+        IReadOnlyList<TechnicianInfo>? technicians = null) =>
         new(
             new FakeCurrentUser(OwnerId),
             new FakeServiceTypeLookup(noServiceType ? null : new ServiceTypeInfo(ServiceTypeId, "Oil change", duration)),
-            new FakeServiceBayLookup(noDealership ? null : new DealershipBays("Springfield Downtown", [new BayInfo(BayId, "Bay 3")])),
+            new FakeServiceBayLookup(noDealership ? null : new DealershipBays("Springfield Downtown", bays ?? [new BayInfo(BayId, "Bay 3")])),
             new FakeVehicleOwnershipQuery(ownership),
-            new FakeQualifiedTechnicianLookup(noTechnicians ? [] : [new TechnicianInfo(TechId, "Alex Chen")]),
+            new FakeQualifiedTechnicianLookup(noTechnicians ? [] : (technicians ?? [new TechnicianInfo(TechId, "Alex Chen")])),
             repo,
             new FixedClock(now ?? Now));
 
@@ -327,9 +393,19 @@ public class RequestAppointmentTests
     private sealed class FakeAppointmentRepository(params Appointment[] existing) : IAppointmentRepository
     {
         public Appointment? Added { get; private set; }
+        public int AddCalls { get; private set; }
+
+        /// <summary>When set, the first <see cref="AddAsync"/> call throws a conflict for this resource.</summary>
+        public BookingResource? ConflictOnFirstInsert { get; init; }
 
         public Task AddAsync(Appointment appointment, CancellationToken ct = default)
         {
+            AddCalls++;
+            if (ConflictOnFirstInsert is { } resource && AddCalls == 1)
+            {
+                throw new AppointmentSlotConflictException(resource);
+            }
+
             Added = appointment;
             return Task.CompletedTask;
         }
