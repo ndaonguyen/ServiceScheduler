@@ -249,16 +249,27 @@ Each row maps directly to a handler unit test (see §Testing Notes).
 - The `EXCLUDE USING gist` constraint (AC-03) is schema, not handler logic — not exercisable through a handler unit test with fake repositories. Verification is explicitly deferred to a future PRD that introduces an `Api.Tests` integration seam (real Postgres via Testcontainers or similar).
 - No new tests exist in `AppointmentScheduler.Api.Tests` for this slice.
 
+## Future Work
+
+Slice-level follow-ups directly triggered or enabled by this PRD. Product-direction items (Notifications, Audit, Billing, Reporting, and other anticipated modules) live in [`../roadmap.md`](../roadmap.md), not here.
+
+Distinct from Out of Scope: these are planned, just not now.
+
+| Item | Trigger |
+|---|---|
+| **Implement the Outbox Pattern for cross-module domain events.** Introduces the `IEventPublisher` port (Application), a post-commit `outbox` table written inside the same transaction as the aggregate, and a dispatcher (in-process first, swappable for a message bus later) per [ADR-0002](../adrs/0002-events-for-inter-module-communication.md). This is a committed future deliverable, not a maybe — the ADR already decides the pattern; only the timing is deferred. | The first PRD that introduces a cross-module event consumer — expected to be the **Notifications** module (see [`../roadmap.md`](../roadmap.md)) reacting to `AppointmentConfirmed`. Outbox lands with that consumer in the same slice so the dual-write-safe path can be verified end-to-end against a real subscriber — building the outbox before a consumer exists would be speculative infrastructure with no assertable behavior. |
+| Integration-test seam in `AppointmentScheduler.Api.Tests` (real Postgres via Testcontainers or similar). | The first PRD that requires verifying database-level behavior not reachable from a handler unit test — starting with the `EXCLUDE USING gist` no-overlap guarantee (AC-03 / NFR-01), which currently ships without automated verification. |
+| Architecture tests (NetArchTest or equivalent) enforcing ADR-0001 module boundaries at build time. | Follows the second module going live (ADR-0001's own "add architecture tests once >2 modules exist" note). This slice introduces four modules at once, so the trigger is effectively "next slice after this one merges." |
+
 ## Out of Scope
+
+Items this PRD deliberately does **not** cover and has no committed plan to add.
 
 - Management / CRUD endpoints for `Vehicle`, `Dealership`, `ServiceBay`, `Technician`, `TechnicianQualification`, `ServiceType` (created via seeded data only).
 - A separate `Customer` profile aggregate — ownership is `Vehicle.OwnerId` only.
-- Publishing any domain events (`AppointmentConfirmed`, etc.) and the `IEventPublisher` / outbox / dispatcher machinery from ADR-0002.
 - Cancelling, rescheduling, or listing/viewing appointments (this slice creates only).
 - Letting the customer pick a specific bay or technician (always auto-assigned).
 - Rate limiting / anti-abuse controls on the booking endpoint.
-- Integration tests through `TestWebAppFactory` for the booking endpoint.
-- Adding a `NetArchTest`-style architecture test project to enforce ADR-0001 boundaries at build time (this PRD triggers ADR-0001's "add architecture tests once >2 modules exist" follow-up, but treats it as a cross-cutting repo concern).
 - Time-zone conversion for display (all times UTC end-to-end).
 
 ## Further Notes
