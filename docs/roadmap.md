@@ -31,15 +31,23 @@ Ordered by likely sequencing. Sequencing is guidance, not commitment.
 
 **Depends on:** initial Booking slice merged. Nothing else.
 
-### 2. Notifications module
+### 2. Notifications module (bundles outbox + first event + first subscriber)
 
 **What:** send email / SMS on booking events. Confirmation on `AppointmentConfirmed` first; reminders and status-change notifications later.
 
 **Why its own module:** different failure semantics — a notification failing must never roll back a confirmed appointment. External I/O (SMTP, SMS gateway) with retry / backoff needs unlike OLTP writes. Naturally the first consumer of the outbox stream.
 
+**What ships in this slice — three parts, none shippable alone:**
+
+1. **Outbox pattern implementation** per [`adrs/0002-events-for-inter-module-communication.md`](adrs/0002-events-for-inter-module-communication.md) — `IEventPublisher` port, `outbox` table written in the same DB transaction as `appointments`, post-commit dispatcher with retry and poison-queue behavior.
+2. **`AppointmentConfirmed` event + Booking handler modification** — the event record is defined in `Application/Features/Booking/Events/`, and the existing Booking handler is modified as part of this slice to publish it immediately after INSERT. The foundation slice ([`prds/appointment-booking.md`](prds/appointment-booking.md) AC-05) itself remains entirely event-free; event publishing is introduced *here*, not there.
+3. **Notifications module + first `IEventHandler<AppointmentConfirmed>`** — subscriber that sends email / SMS confirmation to the customer.
+
+**Why the three are bundled** — none is independently verifiable. An outbox with no event to publish is unused infrastructure. An event record with no subscriber is dead code. A subscriber with no publisher is untestable. Landing all three together lets the first integration test assert the whole dual-write-safe path: booking commits → outbox row is written atomically → dispatcher picks it up post-commit → subscriber receives it → subscriber failure does not roll back the booking. That end-to-end assertion is the entire justification for building the outbox in the first place — deferring any of the three would waste the assertion.
+
 **Trigger to promote to PRD:** first requirement for the customer to receive a confirmation email or SMS after booking.
 
-**Depends on:** Booking slice merged (produces the `AppointmentConfirmed` event). The Notifications PRD also stands up the **Outbox Pattern** per [`adrs/0002-events-for-inter-module-communication.md`](adrs/0002-events-for-inter-module-communication.md) — the outbox lands with its first consumer, not speculatively.
+**Depends on:** Booking foundation slice merged (so there is a handler to modify).
 
 ### 3. Audit module
 
@@ -49,7 +57,7 @@ Ordered by likely sequencing. Sequencing is guidance, not commitment.
 
 **Trigger to promote to PRD:** a concrete driver — compliance requirement, dealership contract clause, or "before production go-live." Do not build without a driver; audit logs written for their own sake become noise nobody reads.
 
-**Depends on:** outbox pattern in place. Audit consumes the same event stream Notifications subscribes to, which validates the fan-out design.
+**Depends on:** Notifications slice (§ 2) merged — that is where the outbox pattern and the first published event (`AppointmentConfirmed`) actually land. Audit becomes the second subscriber on the same event stream, which validates the fan-out design and proves the outbox handles multiple consumers correctly.
 
 ### 4. Billing / Invoicing module
 

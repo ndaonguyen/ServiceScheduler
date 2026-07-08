@@ -31,7 +31,15 @@ We will use **domain events** as the default for inter-module communication. Syn
 ports are permitted only when the caller must have the answer before proceeding (read-only
 reads across module boundaries) — never for state changes.
 
-**Mechanism:**
+> **Implementation status:** the mechanism below is the **target design**, not code that exists
+> today. The first slice ([PRD — Appointment Booking](../prds/appointment-booking.md) AC-05)
+> publishes no domain events, so the `IEventPublisher` port, `outbox` table, and dispatcher have
+> not been built yet. They land together with the **first cross-module event consumer** — expected
+> to be the Notifications module (see [`../roadmap.md`](../roadmap.md) and this ADR's Follow-ups).
+> Building them speculatively — before a consumer exists to prove the dual-write-safe path
+> end-to-end — would be unverifiable infrastructure and is explicitly declined.
+
+**Mechanism (target):**
 
 - Events are **plain C# records** placed in `Application/Features/<Module>/Events/`, e.g.
   `AppointmentConfirmed(Guid AppointmentId, Guid CustomerId, Instant At)`.
