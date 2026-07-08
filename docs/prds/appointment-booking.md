@@ -34,6 +34,7 @@ This is the first vertical slice built on the modular-monolith skeleton describe
 | AS-03 | A technician's calendar consists only of confirmed appointments in this system. External schedule sources (vacation, PTO, other systems) are out of scope. |
 | AS-04 | Service duration is fixed per `ServiceType`. Variable-duration jobs are out of scope. |
 | AS-05 | All times are stored and processed in UTC end-to-end. Time-zone conversion for display is a client concern. |
+| AS-06 | The availability check runs **synchronously inside the booking request** — the caller receives a definitive 201 / 4xx / 409 within the same HTTP response, not a pending acknowledgement followed by a later notification. This is dictated by the originating scenario's **"Real-Time Availability Check"** requirement and the resulting UX (browsers or client apps expect immediate outcome). Async choreography / saga patterns for this flow were considered and explicitly rejected — see [ADR-0004](../adrs/0004-inter-service-communication-strategy.md). Revisit only if the "Real-Time" product constraint is lifted or if a multi-step workflow (e.g. payment) requires a saga around this call. |
 
 ## 2. User Stories
 
