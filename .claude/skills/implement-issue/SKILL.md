@@ -88,3 +88,18 @@ For each change in the plan (in order):
   dotnet ef migrations add <DescriptiveName> \
     --project source/AppointmentScheduler.Infrastructure --startup-project source/AppointmentScheduler.Api
   ```
+
+---
+
+## Step 5: Hand off (do NOT push or open the PR)
+
+The user opens the PR themselves. After the final verification pass:
+
+1. Run `dotnet build -c Release` and `dotnet test -c Release`; report the results.
+2. **Do not** `git push`, and **do not** run `gh pr create` (or any PR-opening command).
+3. Leave the work as commits on the local feature branch and report:
+   - the branch name and a one-line summary of what changed (per plan section);
+   - the acceptance criteria covered and how they were verified (test names);
+   - the **suggested** PR title and body (`Closes #<n>`, deferred follow-ups) from the plan's "Branch & PR" section — as text for the user to reuse, not executed;
+   - the exact `git push` + `gh pr create` commands the user can run when ready.
+4. Stop. Opening the PR (and any push) is the user's step.
