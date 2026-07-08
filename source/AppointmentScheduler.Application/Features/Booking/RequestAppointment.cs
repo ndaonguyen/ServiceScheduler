@@ -70,13 +70,25 @@ internal sealed class RequestAppointmentHandler(
 
         var technicians = await qualifiedTechnicians.ListAsync(request.DealershipId, request.ServiceTypeId, cancellationToken);
 
-        // Naive "first candidate" selection — seed data guarantees at least one of each in this slice.
-        // Empty-list handling (→ 409 NO_BAY_AVAILABLE / NO_QUALIFIED_TECHNICIAN) is #5, not this slice.
-        var bay = dealership.Bays[0];
-        var technician = technicians[0];
-
         var start = request.RequestedStart;
         var end = start + serviceType.Duration; // BR-07: duration comes from the service type, not the client.
+
+        // Narrow the dealership-scoped candidates to those free for [start, end). Passing only these
+        // candidate ids keeps other dealerships' resources out of consideration (BR-05/BR-06).
+        var candidateBayIds = dealership.Bays.Select(b => b.Id).ToList();
+        var candidateTechnicianIds = technicians.Select(t => t.Id).ToList();
+        var busy = await appointments.GetBusyResourcesAsync(
+            candidateBayIds, candidateTechnicianIds, start, end, cancellationToken);
+
+        // Technician first, then bay (PRD §8/§10 order). FirstOrDefault covers both "none qualified"
+        // and "all qualified busy" for the technician, and "no bay" / "all bays busy" for the bay.
+        var technician = technicians.FirstOrDefault(t => !busy.BusyTechnicianIds.Contains(t.Id));
+        if (technician is null) // BR-01 / AT-08
+            return BookingErrors.NoQualifiedTechnician;
+
+        var bay = dealership.Bays.FirstOrDefault(b => !busy.BusyBayIds.Contains(b.Id));
+        if (bay is null) // BR-02 / AT-09
+            return BookingErrors.NoBayAvailable;
 
         var appointment = new Appointment
         {
