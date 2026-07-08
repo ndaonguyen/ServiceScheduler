@@ -2,6 +2,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using AppointmentScheduler.Domain.Booking;
+using AppointmentScheduler.Domain.Catalog;
+using AppointmentScheduler.Domain.Fleet;
+using AppointmentScheduler.Domain.Workforce;
 
 namespace AppointmentScheduler.Infrastructure.Persistence;
 
@@ -48,5 +52,79 @@ public static class DbInitializer
                 }
             }
         }
+
+        await SeedReferenceDataAsync(sp, cancellationToken);
+    }
+
+    // --- Development reference data ---------------------------------------------------------------
+    // Fixed ids so the seeded rows are stable across restarts and can be referenced by hand when
+    // exercising POST /api/appointments. Called only from MigrateAndSeedAsync, which Program.cs
+    // guards to Development.
+
+    private const string DevCustomerEmail = "customer@example.com";
+    private const string DevCustomerPassword = "Passw0rd!$";
+
+    private static readonly Guid OilChangeId = Guid.Parse("8f210000-0000-0000-0000-000000000001");
+    private static readonly Guid TireRotationId = Guid.Parse("8f210000-0000-0000-0000-000000000002");
+    private static readonly Guid DealershipId = Guid.Parse("0e1c0000-0000-0000-0000-000000000001");
+    private static readonly Guid Bay1Id = Guid.Parse("9d310000-0000-0000-0000-000000000001");
+    private static readonly Guid Bay2Id = Guid.Parse("9d310000-0000-0000-0000-000000000002");
+    private static readonly Guid TechnicianId = Guid.Parse("aa870000-0000-0000-0000-000000000001");
+    private static readonly Guid VehicleId = Guid.Parse("5b0a0000-0000-0000-0000-000000000001");
+
+    private static async Task SeedReferenceDataAsync(IServiceProvider sp, CancellationToken cancellationToken)
+    {
+        var db = sp.GetRequiredService<AppDbContext>();
+
+        // Ensure a development customer exists to own the seeded vehicle.
+        var userManager = sp.GetRequiredService<UserManager<AppUser>>();
+        var customer = await userManager.FindByEmailAsync(DevCustomerEmail);
+        if (customer is null)
+        {
+            customer = new AppUser { UserName = DevCustomerEmail, Email = DevCustomerEmail, EmailConfirmed = true };
+            var created = await userManager.CreateAsync(customer, DevCustomerPassword);
+            if (created.Succeeded)
+            {
+                await userManager.AddToRoleAsync(customer, "user");
+            }
+        }
+
+        // Idempotent: reference rows are seeded once. Guard on the dealership set.
+        if (await db.Dealerships.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        db.ServiceTypes.AddRange(
+            new ServiceType { Id = OilChangeId, Name = "Oil change", Duration = TimeSpan.FromMinutes(45) },
+            new ServiceType { Id = TireRotationId, Name = "Tire rotation", Duration = TimeSpan.FromMinutes(30) });
+
+        db.Dealerships.Add(new Dealership
+        {
+            Id = DealershipId,
+            Name = "Springfield Downtown",
+            Address = "123 Main St, Springfield",
+        });
+
+        db.ServiceBays.AddRange(
+            new ServiceBay { Id = Bay1Id, DealershipId = DealershipId, Label = "Bay 1" },
+            new ServiceBay { Id = Bay2Id, DealershipId = DealershipId, Label = "Bay 2" });
+
+        db.Technicians.Add(new Technician { Id = TechnicianId, DealershipId = DealershipId, Name = "Alex Chen" });
+        db.TechnicianQualifications.AddRange(
+            new TechnicianQualification { TechnicianId = TechnicianId, ServiceTypeId = OilChangeId },
+            new TechnicianQualification { TechnicianId = TechnicianId, ServiceTypeId = TireRotationId });
+
+        db.Vehicles.Add(new Vehicle
+        {
+            Id = VehicleId,
+            OwnerId = customer!.Id,
+            Make = "Toyota",
+            Model = "Corolla",
+            Year = 2020,
+            Vin = "JTDBR32E020000001",
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
     }
 }
