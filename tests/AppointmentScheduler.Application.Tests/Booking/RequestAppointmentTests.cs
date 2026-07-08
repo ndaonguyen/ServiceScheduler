@@ -147,6 +147,103 @@ public class RequestAppointmentTests
         repo.Added.Should().BeNull();
     }
 
+    // AT-08 / BR-01: the only qualified technician is busy for the window -> 409. (Bay stays free —
+    // the seeded appointment's bay is a non-candidate id.)
+    [Fact]
+    public async Task All_qualified_technicians_busy_returns_409_NO_QUALIFIED_TECHNICIAN()
+    {
+        var repo = new FakeAppointmentRepository(
+            Confirmed(bayId: Guid.NewGuid(), technicianId: TechId, FutureStart, FutureStart.AddMinutes(45)));
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45));
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart), CancellationToken.None);
+
+        ShouldFailWith(result, "NO_QUALIFIED_TECHNICIAN", 409);
+        repo.Added.Should().BeNull();
+    }
+
+    // AT-08 (other half): no technician is qualified at all -> same 409.
+    [Fact]
+    public async Task No_qualified_technician_exists_returns_409_NO_QUALIFIED_TECHNICIAN()
+    {
+        var repo = new FakeAppointmentRepository();
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45), noTechnicians: true);
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart), CancellationToken.None);
+
+        ShouldFailWith(result, "NO_QUALIFIED_TECHNICIAN", 409);
+        repo.Added.Should().BeNull();
+    }
+
+    // AT-09 / BR-02: the only bay is busy for the window -> 409. (Technician stays free.)
+    [Fact]
+    public async Task All_bays_busy_returns_409_NO_BAY_AVAILABLE()
+    {
+        var repo = new FakeAppointmentRepository(
+            Confirmed(bayId: BayId, technicianId: Guid.NewGuid(), FutureStart, FutureStart.AddMinutes(45)));
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45));
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart), CancellationToken.None);
+
+        ShouldFailWith(result, "NO_BAY_AVAILABLE", 409);
+        repo.Added.Should().BeNull();
+    }
+
+    // AT-10 / BR-03: an existing appointment ending exactly at the requested start does not conflict.
+    [Fact]
+    public async Task Appointment_ending_at_requested_start_does_not_conflict()
+    {
+        var repo = new FakeAppointmentRepository(
+            Confirmed(bayId: BayId, technicianId: TechId, FutureStart.AddMinutes(-45), FutureStart));
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45));
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ServiceBay.Id.Should().Be(BayId);
+        result.Value.Technician.Id.Should().Be(TechId);
+        repo.Added.Should().NotBeNull();
+    }
+
+    // AT-11 / BR-03: an existing appointment [T, T+D) conflicts with a request overlapping by 1s on the
+    // same bay -> 409 NO_BAY_AVAILABLE. (Seeded on a non-candidate technician so the bay is the shortage.)
+    [Fact]
+    public async Task Appointment_overlapping_by_one_second_conflicts_returns_409_NO_BAY_AVAILABLE()
+    {
+        var repo = new FakeAppointmentRepository(
+            Confirmed(bayId: BayId, technicianId: Guid.NewGuid(), FutureStart, FutureStart.AddMinutes(45)));
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45));
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart.AddSeconds(-1)),
+            CancellationToken.None);
+
+        ShouldFailWith(result, "NO_BAY_AVAILABLE", 409);
+        repo.Added.Should().BeNull();
+    }
+
+    // AT-12 / BR-05/BR-06: a busy appointment on another dealership's resources (ids never returned by
+    // the lookups) is never a candidate, so the requested dealership's free resource is assigned.
+    [Fact]
+    public async Task Only_requested_dealership_resources_are_candidates()
+    {
+        var repo = new FakeAppointmentRepository(
+            Confirmed(bayId: Guid.NewGuid(), technicianId: Guid.NewGuid(), FutureStart, FutureStart.AddMinutes(45)));
+        var handler = BuildHandler(repo, duration: TimeSpan.FromMinutes(45));
+
+        var result = await handler.Handle(
+            new RequestAppointment(VehicleId, DealershipId, ServiceTypeId, FutureStart), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ServiceBay.Id.Should().Be(BayId);
+        result.Value.Technician.Id.Should().Be(TechId);
+        repo.Added.Should().NotBeNull();
+    }
+
     private static void ShouldFailWith(Result<RequestAppointmentResponse> result, string code, int httpStatus)
     {
         result.IsFailed.Should().BeTrue();
@@ -161,15 +258,33 @@ public class RequestAppointmentTests
         DateTimeOffset? now = null,
         bool noServiceType = false,
         bool noDealership = false,
+        bool noTechnicians = false,
         VehicleOwnership ownership = VehicleOwnership.Owned) =>
         new(
             new FakeCurrentUser(OwnerId),
             new FakeServiceTypeLookup(noServiceType ? null : new ServiceTypeInfo(ServiceTypeId, "Oil change", duration)),
             new FakeServiceBayLookup(noDealership ? null : new DealershipBays("Springfield Downtown", [new BayInfo(BayId, "Bay 3")])),
             new FakeVehicleOwnershipQuery(ownership),
-            new FakeQualifiedTechnicianLookup([new TechnicianInfo(TechId, "Alex Chen")]),
+            new FakeQualifiedTechnicianLookup(noTechnicians ? [] : [new TechnicianInfo(TechId, "Alex Chen")]),
             repo,
             new FixedClock(now ?? Now));
+
+    // A confirmed appointment occupying the given bay/technician over [start, end).
+    private static Appointment Confirmed(Guid bayId, Guid technicianId, DateTimeOffset start, DateTimeOffset end) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = "other-owner",
+            VehicleId = Guid.NewGuid(),
+            DealershipId = DealershipId,
+            ServiceTypeId = ServiceTypeId,
+            ServiceBayId = bayId,
+            TechnicianId = technicianId,
+            ScheduledStart = start,
+            ScheduledEnd = end,
+            Status = AppointmentStatus.Confirmed,
+            CreatedAt = start,
+        };
 
     // --- hand-rolled fakes (no mocking library in this repo) ---
 
@@ -209,7 +324,7 @@ public class RequestAppointmentTests
             Task.FromResult(techs);
     }
 
-    private sealed class FakeAppointmentRepository : IAppointmentRepository
+    private sealed class FakeAppointmentRepository(params Appointment[] existing) : IAppointmentRepository
     {
         public Appointment? Added { get; private set; }
 
@@ -217,6 +332,22 @@ public class RequestAppointmentTests
         {
             Added = appointment;
             return Task.CompletedTask;
+        }
+
+        public Task<BusyResources> GetBusyResourcesAsync(
+            IReadOnlyCollection<Guid> candidateBayIds,
+            IReadOnlyCollection<Guid> candidateTechnicianIds,
+            DateTimeOffset start,
+            DateTimeOffset end,
+            CancellationToken ct = default)
+        {
+            // Reuse the production overlap expression (compiled) so AT-10/AT-11 pin the real BR-03
+            // rule, not a test-double reimplementation.
+            var overlaps = AppointmentOverlap.Within(start, end).Compile();
+            var hits = existing.Where(a => a.Status == AppointmentStatus.Confirmed && overlaps(a)).ToList();
+            return Task.FromResult(new BusyResources(
+                hits.Select(a => a.ServiceBayId).Where(candidateBayIds.Contains).ToHashSet(),
+                hits.Select(a => a.TechnicianId).Where(candidateTechnicianIds.Contains).ToHashSet()));
         }
     }
 }

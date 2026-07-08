@@ -37,4 +37,11 @@ internal static class BookingErrors
 
     public static BookingError VehicleNotOwned =>
         new("VEHICLE_NOT_OWNED_BY_CALLER", 403, "The specified vehicle is not owned by the caller.");
+
+    // Availability failures (#5 / VR are not involved — these are 409 conflicts, PRD §8).
+    public static BookingError NoQualifiedTechnician =>
+        new("NO_QUALIFIED_TECHNICIAN", 409, "No qualified technician is available at the dealership for the requested time.");
+
+    public static BookingError NoBayAvailable =>
+        new("NO_BAY_AVAILABLE", 409, "No service bay is available at the dealership for the requested time.");
 }
