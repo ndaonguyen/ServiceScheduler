@@ -1,14 +1,16 @@
 ---
 name: implement-issue
-description: Take a GitHub issue that already has a merged plan under docs/plans/, create the implementation branch, drive TDD through the plan section by section, and open a feature PR that closes the issue. Use when the user wants to implement (not plan) a ticket.
+description: Take a GitHub issue that already has a merged plan under docs/plans/, create the implementation branch, and drive TDD through the plan section by section, leaving a committed feature branch that closes the issue. Does NOT push or open the PR — the user does that. Use when the user wants to implement (not plan) a ticket.
 argument-hint: "<issue-url-or-number>"
 ---
 
 # /implement-issue
 
-Turn a **planned issue** into a **feature PR**. Assumes `/plan-issue` already produced `docs/plans/<n>-*.md` and its plan PR was merged. Refuses to run otherwise — plan first.
+Turn a **planned issue** into a **ready-to-review feature branch**. Assumes `/plan-issue` already produced `docs/plans/<n>-*.md` and its plan PR was merged. Refuses to run otherwise — plan first.
 
 Do not invent scope. The plan is the contract; if reality forces deviation, stop and ask.
+
+> **Do not push or open the PR — the user does that.** This skill stops at a committed local branch. When done, report the suggested PR title/body and the push/PR commands, then stop (see Step 5).
 
 ---
 
