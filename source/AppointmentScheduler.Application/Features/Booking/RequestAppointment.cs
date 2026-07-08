@@ -80,42 +80,77 @@ internal sealed class RequestAppointmentHandler(
         var busy = await appointments.GetBusyResourcesAsync(
             candidateBayIds, candidateTechnicianIds, start, end, cancellationToken);
 
-        // Technician first, then bay (PRD §8/§10 order). FirstOrDefault covers both "none qualified"
-        // and "all qualified busy" for the technician, and "no bay" / "all bays busy" for the bay.
-        var technician = technicians.FirstOrDefault(t => !busy.BusyTechnicianIds.Contains(t.Id));
-        if (technician is null) // BR-01 / AT-08
+        // Technician first, then bay (PRD §8/§10 order). Keep the whole ordered free list of each so a
+        // race loss on insert (#6 EXCLUDE constraint) can retry with the next free candidate.
+        var freeTechnicians = technicians.Where(t => !busy.BusyTechnicianIds.Contains(t.Id)).ToList();
+        if (freeTechnicians.Count == 0) // BR-01 / AT-08
             return BookingErrors.NoQualifiedTechnician;
 
-        var bay = dealership.Bays.FirstOrDefault(b => !busy.BusyBayIds.Contains(b.Id));
-        if (bay is null) // BR-02 / AT-09
+        var freeBays = dealership.Bays.Where(b => !busy.BusyBayIds.Contains(b.Id)).ToList();
+        if (freeBays.Count == 0) // BR-02 / AT-09
             return BookingErrors.NoBayAvailable;
 
-        var appointment = new Appointment
+        var technicianIndex = 0;
+        var bayIndex = 0;
+        var lastConflict = BookingResource.ServiceBay;
+
+        // Initial attempt + one retry (PRD §10 "retry once with next candidate"). A concurrent booking
+        // can take the chosen bay/technician between our availability read and the insert; the DB
+        // constraint rejects it and we advance to the next free candidate in the losing dimension.
+        for (var attempt = 0; attempt < 2; attempt++)
         {
-            Id = Guid.NewGuid(),
-            OwnerId = ownerId,
-            VehicleId = request.VehicleId,
-            DealershipId = request.DealershipId,
-            ServiceTypeId = request.ServiceTypeId,
-            ServiceBayId = bay.Id,
-            TechnicianId = technician.Id,
-            ScheduledStart = start,
-            ScheduledEnd = end,
-            Status = AppointmentStatus.Confirmed,
-            CreatedAt = clock.GetUtcNow(),
-        };
+            var technician = freeTechnicians[technicianIndex];
+            var bay = freeBays[bayIndex];
 
-        await appointments.AddAsync(appointment, cancellationToken);
+            var appointment = new Appointment
+            {
+                Id = Guid.NewGuid(),
+                OwnerId = ownerId,
+                VehicleId = request.VehicleId,
+                DealershipId = request.DealershipId,
+                ServiceTypeId = request.ServiceTypeId,
+                ServiceBayId = bay.Id,
+                TechnicianId = technician.Id,
+                ScheduledStart = start,
+                ScheduledEnd = end,
+                Status = AppointmentStatus.Confirmed,
+                CreatedAt = clock.GetUtcNow(),
+            };
 
-        return Result.Ok(new RequestAppointmentResponse(
-            appointment.Id,
-            new DealershipRef(request.DealershipId, dealership.DealershipName),
-            new ServiceTypeRef(serviceType.Id, serviceType.Name, (int)serviceType.Duration.TotalMinutes),
-            new VehicleRef(request.VehicleId),
-            new ServiceBayRef(bay.Id, bay.Label),
-            new TechnicianRef(technician.Id, technician.Name),
-            start,
-            end,
-            appointment.Status.ToString()));
+            try
+            {
+                await appointments.AddAsync(appointment, cancellationToken);
+
+                return Result.Ok(new RequestAppointmentResponse(
+                    appointment.Id,
+                    new DealershipRef(request.DealershipId, dealership.DealershipName),
+                    new ServiceTypeRef(serviceType.Id, serviceType.Name, (int)serviceType.Duration.TotalMinutes),
+                    new VehicleRef(request.VehicleId),
+                    new ServiceBayRef(bay.Id, bay.Label),
+                    new TechnicianRef(technician.Id, technician.Name),
+                    start,
+                    end,
+                    appointment.Status.ToString()));
+            }
+            catch (AppointmentSlotConflictException conflict)
+            {
+                lastConflict = conflict.Resource;
+                if (conflict.Resource == BookingResource.ServiceBay)
+                {
+                    if (++bayIndex >= freeBays.Count)
+                        return BookingErrors.NoBayAvailable;
+                }
+                else if (++technicianIndex >= freeTechnicians.Count)
+                {
+                    return BookingErrors.NoQualifiedTechnician;
+                }
+            }
+        }
+
+        // The single retry was spent and still conflicted (a next candidate existed): stop and return
+        // the 409 for the dimension that last lost the race.
+        return lastConflict == BookingResource.ServiceBay
+            ? BookingErrors.NoBayAvailable
+            : BookingErrors.NoQualifiedTechnician;
     }
 }
