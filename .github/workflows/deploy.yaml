@@ -95,8 +95,8 @@ jobs:
       - name: Apply EF Core migrations
         run: >
           dotnet ef database update
-          --project source/AppointmentScheduler.Infrastructure
-          --startup-project source/AppointmentScheduler.Api
+          --project src/BuildingBlocks/AppointmentScheduler.BuildingBlocks.Persistence
+          --startup-project src/Host/AppointmentScheduler.Api
         env:
           AppDb__ConnectionString: ${{ secrets.DB_CONNECTION_STRING }}
 

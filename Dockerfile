@@ -11,9 +11,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY global.json Directory.Build.props ./
-COPY source/ source/
-RUN dotnet restore source/AppointmentScheduler.Api/AppointmentScheduler.Api.csproj
-RUN dotnet publish source/AppointmentScheduler.Api/AppointmentScheduler.Api.csproj \
+COPY src/ src/
+RUN dotnet restore src/Host/AppointmentScheduler.Api/AppointmentScheduler.Api.csproj
+RUN dotnet publish src/Host/AppointmentScheduler.Api/AppointmentScheduler.Api.csproj \
     -c Release -o /app /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

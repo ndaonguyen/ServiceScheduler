@@ -3,7 +3,7 @@
 - **Status**: Accepted
 - **Date**: 2026-07-07
 - **Deciders**: nguyen.nguyendao
-- **Related**: [ADR-0002](0002-events-for-inter-module-communication.md)
+- **Related**: [ADR-0002](0002-events-for-inter-module-communication.md), [ADR-0006](0006-project-per-module-physical-structure.md) (refines the physical layout and rule #2)
 
 ## Context
 
@@ -18,6 +18,14 @@ future extraction expensive: when scale or ownership pressure eventually forces 
 paying to untangle coupling rather than to lift a module out.
 
 ## Decision
+
+> **Refined by [ADR-0006](0006-project-per-module-physical-structure.md) (2026-07-09):** the module
+> boundaries below are now enforced by the compiler via a **project-per-module** layout under `src/`
+> (not folders inside four shared projects), and rule #2's cross-module query ports are
+> **provider-owned** (in each module's `Contracts` project) rather than consumer-owned — physical
+> separation makes a consumer-owned port a forbidden provider→consumer reference. The core decision
+> (modular monolith, liftable without a rewrite) is unchanged. Paths below reflect the original
+> layout; see ADR-0006 for the current one.
 
 We will build ServiceScheduler as a **modular monolith** — a single deployable ASP.NET Core
 process organised into **feature modules** with enforced boundaries. A "module" is a bounded

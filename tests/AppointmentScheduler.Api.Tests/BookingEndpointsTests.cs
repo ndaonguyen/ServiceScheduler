@@ -76,12 +76,12 @@ public class BookingEndpointsTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        db.ServiceTypes.Add(new ServiceType { Id = serviceTypeId, Name = "Oil change", Duration = TimeSpan.FromMinutes(45) });
-        db.Dealerships.Add(new Dealership { Id = dealershipId, Name = "Springfield Downtown", Address = "123 Main St" });
-        db.ServiceBays.Add(new ServiceBay { Id = bayId, DealershipId = dealershipId, Label = "Bay 1" });
-        db.Technicians.Add(new Technician { Id = technicianId, DealershipId = dealershipId, Name = "Alex Chen" });
-        db.TechnicianQualifications.Add(new TechnicianQualification { TechnicianId = technicianId, ServiceTypeId = serviceTypeId });
-        db.Vehicles.Add(new Vehicle
+        db.Set<ServiceType>().Add(new ServiceType { Id = serviceTypeId, Name = "Oil change", Duration = TimeSpan.FromMinutes(45) });
+        db.Set<Dealership>().Add(new Dealership { Id = dealershipId, Name = "Springfield Downtown", Address = "123 Main St" });
+        db.Set<ServiceBay>().Add(new ServiceBay { Id = bayId, DealershipId = dealershipId, Label = "Bay 1" });
+        db.Set<Technician>().Add(new Technician { Id = technicianId, DealershipId = dealershipId, Name = "Alex Chen" });
+        db.Set<TechnicianQualification>().Add(new TechnicianQualification { TechnicianId = technicianId, ServiceTypeId = serviceTypeId });
+        db.Set<Vehicle>().Add(new Vehicle
         {
             Id = vehicleId,
             OwnerId = OwnerId,
