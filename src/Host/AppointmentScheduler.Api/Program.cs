@@ -6,11 +6,11 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using AppointmentScheduler.Api.Booking;
+using AppointmentScheduler.Booking.Api.Endpoints;
 using AppointmentScheduler.Api.Endpoints;
 using AppointmentScheduler.Api.Security;
 using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.Application.Messaging;
+using AppointmentScheduler.BuildingBlocks.Messaging;
 using AppointmentScheduler.Api;
 using AppointmentScheduler.Infrastructure.Persistence;
 

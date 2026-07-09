@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Application.Features.Booking;
+namespace AppointmentScheduler.Booking.Application.Features;
 
 /// <summary>Which resource lost a concurrent race for the requested window.</summary>
 public enum BookingResource

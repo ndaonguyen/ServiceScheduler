@@ -1,9 +1,9 @@
-using AppointmentScheduler.Domain.Catalog;
+using AppointmentScheduler.Catalog.Domain;
 using Microsoft.EntityFrameworkCore;
 using AppointmentScheduler.Application.Abstractions;
 using AppointmentScheduler.Infrastructure.Persistence;
 
-namespace AppointmentScheduler.Infrastructure.Catalog;
+namespace AppointmentScheduler.Catalog.Infrastructure;
 
 /// <summary>Catalog's implementation of <see cref="IServiceTypeLookup"/> over <see cref="AppDbContext"/>.</summary>
 internal sealed class ServiceTypeLookup(AppDbContext db) : IServiceTypeLookup

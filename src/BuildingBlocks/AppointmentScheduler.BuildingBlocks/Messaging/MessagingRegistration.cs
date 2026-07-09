@@ -1,7 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AppointmentScheduler.Application.Messaging;
+namespace AppointmentScheduler.BuildingBlocks.Messaging;
 
 /// <summary>
 /// Composition helpers for the in-process mediator. <see cref="AddMessaging"/> registers the shared

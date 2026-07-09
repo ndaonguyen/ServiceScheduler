@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Domain.Fleet;
+namespace AppointmentScheduler.Fleet.Domain;
 
 /// <summary>A dealership location that owns service bays and employs technicians.</summary>
 public sealed class Dealership

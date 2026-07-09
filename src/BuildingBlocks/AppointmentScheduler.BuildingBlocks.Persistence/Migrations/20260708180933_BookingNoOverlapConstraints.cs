@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace AppointmentScheduler.Infrastructure.Migrations
+namespace AppointmentScheduler.BuildingBlocks.Persistence.Migrations
 {
     /// <summary>
     /// Enforces the no-double-booking guarantee at the database level (NFR-01 / AC-03) via two

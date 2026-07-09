@@ -1,9 +1,9 @@
-using AppointmentScheduler.Domain.Fleet;
+using AppointmentScheduler.Fleet.Domain;
 using Microsoft.EntityFrameworkCore;
 using AppointmentScheduler.Application.Abstractions;
 using AppointmentScheduler.Infrastructure.Persistence;
 
-namespace AppointmentScheduler.Infrastructure.Fleet;
+namespace AppointmentScheduler.Fleet.Infrastructure;
 
 /// <summary>
 /// Fleet's implementation of <see cref="IServiceBayLookup"/>. Resolves the dealership (for its name)

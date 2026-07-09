@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Application.Messaging;
+namespace AppointmentScheduler.BuildingBlocks.Messaging;
 
 /// <summary>A request (command or query) that produces a <typeparamref name="TResponse"/>.</summary>
 public interface IRequest<out TResponse>;

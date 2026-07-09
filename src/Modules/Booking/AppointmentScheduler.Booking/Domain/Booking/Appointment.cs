@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Domain.Booking;
+namespace AppointmentScheduler.Booking.Domain;
 
 /// <summary>
 /// The Booking module's aggregate: a confirmed reservation of a service bay and a qualified

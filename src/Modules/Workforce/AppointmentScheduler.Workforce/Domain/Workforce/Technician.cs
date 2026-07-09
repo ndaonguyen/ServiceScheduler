@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Domain.Workforce;
+namespace AppointmentScheduler.Workforce.Domain;
 
 /// <summary>A technician employed at a dealership. Skills are recorded via
 /// <see cref="TechnicianQualification"/>.</summary>

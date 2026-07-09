@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Domain.Fleet;
+namespace AppointmentScheduler.Fleet.Domain;
 
 /// <summary>
 /// A customer-owned vehicle. Ownership is modelled here (Fleet) as <see cref="OwnerId"/> →

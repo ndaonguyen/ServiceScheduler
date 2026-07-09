@@ -1,9 +1,9 @@
 using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.Application.Messaging;
-using AppointmentScheduler.Domain.Booking;
+using AppointmentScheduler.BuildingBlocks.Messaging;
+using AppointmentScheduler.Booking.Domain;
 using FluentResults;
 
-namespace AppointmentScheduler.Application.Features.Booking;
+namespace AppointmentScheduler.Booking.Application.Features;
 
 /// <summary>
 /// Books an appointment for the authenticated caller. Validates the request references and timing

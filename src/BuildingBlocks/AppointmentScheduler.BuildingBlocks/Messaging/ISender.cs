@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Application.Messaging;
+namespace AppointmentScheduler.BuildingBlocks.Messaging;
 
 /// <summary>Dispatches a request to its handler through the behavior pipeline.</summary>
 public interface ISender

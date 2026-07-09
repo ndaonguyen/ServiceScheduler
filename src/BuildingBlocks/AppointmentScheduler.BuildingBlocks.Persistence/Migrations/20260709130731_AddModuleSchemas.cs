@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace AppointmentScheduler.Infrastructure.Migrations
+namespace AppointmentScheduler.BuildingBlocks.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddModuleSchemas : Migration

@@ -1,11 +1,11 @@
 using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.Application.Features.Booking;
-using AppointmentScheduler.Domain.Booking;
+using AppointmentScheduler.Booking.Application.Features;
+using AppointmentScheduler.Booking.Domain;
 using AppointmentScheduler.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-namespace AppointmentScheduler.Infrastructure.Booking;
+namespace AppointmentScheduler.Booking.Infrastructure;
 
 /// <summary>Booking's implementation of <see cref="IAppointmentRepository"/> over <see cref="AppDbContext"/>.</summary>
 internal sealed class AppointmentRepository(AppDbContext db) : IAppointmentRepository

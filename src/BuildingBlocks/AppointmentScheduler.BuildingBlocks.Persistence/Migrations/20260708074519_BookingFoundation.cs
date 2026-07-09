@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace AppointmentScheduler.Infrastructure.Migrations
+namespace AppointmentScheduler.BuildingBlocks.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class BookingFoundation : Migration

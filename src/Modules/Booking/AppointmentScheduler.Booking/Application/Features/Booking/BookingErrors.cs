@@ -1,6 +1,6 @@
 using FluentResults;
 
-namespace AppointmentScheduler.Application.Features.Booking;
+namespace AppointmentScheduler.Booking.Application.Features;
 
 /// <summary>
 /// A <see cref="FluentResults"/> error that carries the PRD §8 stable machine-readable

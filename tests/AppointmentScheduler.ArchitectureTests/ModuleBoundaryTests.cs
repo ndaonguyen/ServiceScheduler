@@ -12,10 +12,10 @@ namespace AppointmentScheduler.ArchitectureTests;
 /// </summary>
 public class ModuleBoundaryTests
 {
-    private static readonly System.Reflection.Assembly Booking = typeof(AppointmentScheduler.Domain.Booking.Appointment).Assembly;
-    private static readonly System.Reflection.Assembly Fleet = typeof(AppointmentScheduler.Domain.Fleet.Vehicle).Assembly;
-    private static readonly System.Reflection.Assembly Workforce = typeof(AppointmentScheduler.Domain.Workforce.Technician).Assembly;
-    private static readonly System.Reflection.Assembly Catalog = typeof(AppointmentScheduler.Domain.Catalog.ServiceType).Assembly;
+    private static readonly System.Reflection.Assembly Booking = typeof(AppointmentScheduler.Booking.Domain.Appointment).Assembly;
+    private static readonly System.Reflection.Assembly Fleet = typeof(AppointmentScheduler.Fleet.Domain.Vehicle).Assembly;
+    private static readonly System.Reflection.Assembly Workforce = typeof(AppointmentScheduler.Workforce.Domain.Technician).Assembly;
+    private static readonly System.Reflection.Assembly Catalog = typeof(AppointmentScheduler.Catalog.Domain.ServiceType).Assembly;
 
     public static readonly TheoryData<string, System.Reflection.Assembly> Modules = new()
     {
@@ -44,12 +44,12 @@ public class ModuleBoundaryTests
     {
         var result = Types.InAssembly(Booking)
             .ShouldNot().HaveDependencyOnAny(
-                "AppointmentScheduler.Domain.Fleet",
-                "AppointmentScheduler.Domain.Workforce",
-                "AppointmentScheduler.Domain.Catalog",
-                "AppointmentScheduler.Infrastructure.Fleet",
-                "AppointmentScheduler.Infrastructure.Workforce",
-                "AppointmentScheduler.Infrastructure.Catalog")
+                "AppointmentScheduler.Fleet.Domain",
+                "AppointmentScheduler.Workforce.Domain",
+                "AppointmentScheduler.Catalog.Domain",
+                "AppointmentScheduler.Fleet.Infrastructure",
+                "AppointmentScheduler.Workforce.Infrastructure",
+                "AppointmentScheduler.Catalog.Infrastructure")
             .GetResult();
 
         result.IsSuccessful.Should().BeTrue(

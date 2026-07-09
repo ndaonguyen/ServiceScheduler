@@ -1,4 +1,4 @@
-using AppointmentScheduler.Domain.Booking;
+using AppointmentScheduler.Booking.Domain;
 
 namespace AppointmentScheduler.Application.Abstractions;
 

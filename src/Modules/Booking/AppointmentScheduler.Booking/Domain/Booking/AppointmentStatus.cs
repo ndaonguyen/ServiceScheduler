@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Domain.Booking;
+namespace AppointmentScheduler.Booking.Domain;
 
 /// <summary>
 /// Lifecycle state of an <see cref="Appointment"/>. Only <see cref="Confirmed"/> exists in this

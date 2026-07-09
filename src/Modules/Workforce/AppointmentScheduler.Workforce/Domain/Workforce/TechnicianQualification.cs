@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Domain.Workforce;
+namespace AppointmentScheduler.Workforce.Domain;
 
 /// <summary>
 /// A skill link: the <see cref="Technician"/> is qualified for the given service type. The service

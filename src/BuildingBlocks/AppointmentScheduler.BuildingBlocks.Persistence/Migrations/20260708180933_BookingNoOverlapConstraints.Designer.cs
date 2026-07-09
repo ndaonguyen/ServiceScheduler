@@ -9,7 +9,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace AppointmentScheduler.Infrastructure.Migrations
+namespace AppointmentScheduler.BuildingBlocks.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20260708180933_BookingNoOverlapConstraints")]
@@ -25,7 +25,7 @@ namespace AppointmentScheduler.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("AppointmentScheduler.Domain.Booking.Appointment", b =>
+            modelBuilder.Entity("AppointmentScheduler.Booking.Domain.Appointment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -85,7 +85,7 @@ namespace AppointmentScheduler.Infrastructure.Migrations
                     b.ToTable("appointments", (string)null);
                 });
 
-            modelBuilder.Entity("AppointmentScheduler.Domain.Catalog.ServiceType", b =>
+            modelBuilder.Entity("AppointmentScheduler.Catalog.Domain.ServiceType", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -106,7 +106,7 @@ namespace AppointmentScheduler.Infrastructure.Migrations
                     b.ToTable("service_types", (string)null);
                 });
 
-            modelBuilder.Entity("AppointmentScheduler.Domain.Fleet.Dealership", b =>
+            modelBuilder.Entity("AppointmentScheduler.Fleet.Domain.Dealership", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -128,7 +128,7 @@ namespace AppointmentScheduler.Infrastructure.Migrations
                     b.ToTable("dealerships", (string)null);
                 });
 
-            modelBuilder.Entity("AppointmentScheduler.Domain.Fleet.ServiceBay", b =>
+            modelBuilder.Entity("AppointmentScheduler.Fleet.Domain.ServiceBay", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -151,7 +151,7 @@ namespace AppointmentScheduler.Infrastructure.Migrations
                     b.ToTable("service_bays", (string)null);
                 });
 
-            modelBuilder.Entity("AppointmentScheduler.Domain.Fleet.Vehicle", b =>
+            modelBuilder.Entity("AppointmentScheduler.Fleet.Domain.Vehicle", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -189,7 +189,7 @@ namespace AppointmentScheduler.Infrastructure.Migrations
                     b.ToTable("vehicles", (string)null);
                 });
 
-            modelBuilder.Entity("AppointmentScheduler.Domain.Workforce.Technician", b =>
+            modelBuilder.Entity("AppointmentScheduler.Workforce.Domain.Technician", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -212,7 +212,7 @@ namespace AppointmentScheduler.Infrastructure.Migrations
                     b.ToTable("technicians", (string)null);
                 });
 
-            modelBuilder.Entity("AppointmentScheduler.Domain.Workforce.TechnicianQualification", b =>
+            modelBuilder.Entity("AppointmentScheduler.Workforce.Domain.TechnicianQualification", b =>
                 {
                     b.Property<Guid>("TechnicianId")
                         .HasColumnType("uuid")

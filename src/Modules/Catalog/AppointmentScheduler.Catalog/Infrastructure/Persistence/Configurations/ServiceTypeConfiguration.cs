@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using AppointmentScheduler.Domain.Catalog;
+using AppointmentScheduler.Catalog.Domain;
 
 namespace AppointmentScheduler.Infrastructure.Persistence.Configurations;
 

@@ -1,9 +1,9 @@
-using AppointmentScheduler.Domain.Fleet;
+using AppointmentScheduler.Fleet.Domain;
 using Microsoft.EntityFrameworkCore;
 using AppointmentScheduler.Application.Abstractions;
 using AppointmentScheduler.Infrastructure.Persistence;
 
-namespace AppointmentScheduler.Infrastructure.Fleet;
+namespace AppointmentScheduler.Fleet.Infrastructure;
 
 /// <summary>Fleet's implementation of <see cref="IVehicleOwnershipQuery"/> over <see cref="AppDbContext"/>.</summary>
 internal sealed class VehicleOwnershipQuery(AppDbContext db) : IVehicleOwnershipQuery

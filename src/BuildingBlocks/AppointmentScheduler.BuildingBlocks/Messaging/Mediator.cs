@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AppointmentScheduler.Application.Messaging;
+namespace AppointmentScheduler.BuildingBlocks.Messaging;
 
 /// <summary>
 /// Minimal in-process mediator. Resolves the single <see cref="IRequestHandler{TRequest,TResponse}"/>

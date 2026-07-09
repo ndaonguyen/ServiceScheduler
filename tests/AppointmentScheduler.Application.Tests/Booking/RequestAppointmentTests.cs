@@ -1,6 +1,6 @@
 using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.Application.Features.Booking;
-using AppointmentScheduler.Domain.Booking;
+using AppointmentScheduler.Booking.Application.Features;
+using AppointmentScheduler.Booking.Domain;
 using AwesomeAssertions;
 using FluentResults;
 using Xunit;

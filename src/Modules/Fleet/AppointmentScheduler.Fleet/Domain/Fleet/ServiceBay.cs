@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Domain.Fleet;
+namespace AppointmentScheduler.Fleet.Domain;
 
 /// <summary>A physical service bay belonging to a <see cref="Dealership"/>.</summary>
 public sealed class ServiceBay

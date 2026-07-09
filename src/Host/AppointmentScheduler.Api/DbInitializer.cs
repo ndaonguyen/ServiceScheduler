@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using AppointmentScheduler.Domain.Booking;
-using AppointmentScheduler.Domain.Catalog;
-using AppointmentScheduler.Domain.Fleet;
-using AppointmentScheduler.Domain.Workforce;
+using AppointmentScheduler.Booking.Domain;
+using AppointmentScheduler.Catalog.Domain;
+using AppointmentScheduler.Fleet.Domain;
+using AppointmentScheduler.Workforce.Domain;
 
 namespace AppointmentScheduler.Infrastructure.Persistence;
 

@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using AppointmentScheduler.Domain.Catalog;
-using AppointmentScheduler.Domain.Fleet;
-using AppointmentScheduler.Domain.Workforce;
+using AppointmentScheduler.Catalog.Domain;
+using AppointmentScheduler.Fleet.Domain;
+using AppointmentScheduler.Workforce.Domain;
 using AppointmentScheduler.Infrastructure.Persistence;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;

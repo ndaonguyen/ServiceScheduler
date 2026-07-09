@@ -9,7 +9,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace AppointmentScheduler.Infrastructure.Migrations
+namespace AppointmentScheduler.BuildingBlocks.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20260707095241_InitialCreate")]

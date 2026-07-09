@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
-using AppointmentScheduler.Domain.Booking;
+using AppointmentScheduler.Booking.Domain;
 
-namespace AppointmentScheduler.Application.Features.Booking;
+namespace AppointmentScheduler.Booking.Application.Features;
 
 /// <summary>
 /// BR-03 half-open overlap: an appointment's <c>[ScheduledStart, ScheduledEnd)</c> intersects the

@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Application.Messaging;
+namespace AppointmentScheduler.BuildingBlocks.Messaging;
 
 /// <summary>Handles a single <typeparamref name="TRequest"/> slice.</summary>
 public interface IRequestHandler<in TRequest, TResponse>

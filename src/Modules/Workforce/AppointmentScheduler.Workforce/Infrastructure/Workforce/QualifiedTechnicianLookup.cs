@@ -1,9 +1,9 @@
-using AppointmentScheduler.Domain.Workforce;
+using AppointmentScheduler.Workforce.Domain;
 using Microsoft.EntityFrameworkCore;
 using AppointmentScheduler.Application.Abstractions;
 using AppointmentScheduler.Infrastructure.Persistence;
 
-namespace AppointmentScheduler.Infrastructure.Workforce;
+namespace AppointmentScheduler.Workforce.Infrastructure;
 
 /// <summary>
 /// Workforce's implementation of <see cref="IQualifiedTechnicianLookup"/>: technicians at the

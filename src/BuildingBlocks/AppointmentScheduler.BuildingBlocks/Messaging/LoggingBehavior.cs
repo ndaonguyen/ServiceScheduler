@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace AppointmentScheduler.Application.Messaging;
+namespace AppointmentScheduler.BuildingBlocks.Messaging;
 
 /// <summary>AppointmentScheduler pipeline behavior: logs every request and its elapsed time.</summary>
 public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)

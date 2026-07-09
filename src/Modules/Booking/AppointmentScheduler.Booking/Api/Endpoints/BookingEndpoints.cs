@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using AppointmentScheduler.Application.Features.Booking;
-using AppointmentScheduler.Application.Messaging;
+using AppointmentScheduler.Booking.Application.Features;
+using AppointmentScheduler.BuildingBlocks.Messaging;
 
-namespace AppointmentScheduler.Api.Booking;
+namespace AppointmentScheduler.Booking.Api.Endpoints;
 
 /// <summary>
 /// Booking endpoints under <c>/api/appointments</c>. Any authenticated caller may request an

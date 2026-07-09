@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Domain.Catalog;
+namespace AppointmentScheduler.Catalog.Domain;
 
 /// <summary>
 /// A bookable service with a fixed <see cref="Duration"/>. The duration alone determines an

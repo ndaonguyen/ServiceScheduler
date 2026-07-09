@@ -1,7 +1,7 @@
 using System.Reflection;
 using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.Application.Messaging;
-using AppointmentScheduler.Infrastructure.Fleet;
+using AppointmentScheduler.BuildingBlocks.Messaging;
+using AppointmentScheduler.Fleet.Infrastructure;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
