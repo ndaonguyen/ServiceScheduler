@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Application.Abstractions;
+namespace AppointmentScheduler.Catalog.Contracts;
 
 /// <summary>
 /// Cross-module read port owned by <b>Catalog</b>: resolves a service type's display name and fixed

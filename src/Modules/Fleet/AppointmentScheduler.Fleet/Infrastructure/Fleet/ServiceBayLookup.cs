@@ -1,7 +1,7 @@
 using AppointmentScheduler.Fleet.Domain;
 using Microsoft.EntityFrameworkCore;
-using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.Fleet.Contracts;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 
 namespace AppointmentScheduler.Fleet.Infrastructure;
 

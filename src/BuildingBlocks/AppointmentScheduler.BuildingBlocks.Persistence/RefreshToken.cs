@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Infrastructure.Persistence;
+namespace AppointmentScheduler.BuildingBlocks.Persistence;
 
 /// <summary>
 /// A persisted refresh token. Only the SHA-256 <see cref="TokenHash"/> is stored (never the raw

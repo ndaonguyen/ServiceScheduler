@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Application.Abstractions;
+namespace AppointmentScheduler.Fleet.Contracts;
 
 /// <summary>
 /// Cross-module read port owned by <b>Fleet</b>: resolves a dealership and its service bays. Returns

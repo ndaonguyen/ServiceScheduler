@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 
 namespace AppointmentScheduler.Api.Tests;
 
@@ -25,6 +25,14 @@ internal class TestWebAppFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Pin ContentRoot to the Api project directory. WAF's built-in fallback tries
+        // <solution-root>/<assembly-name>/, which under our src/Host/ layout resolves to a
+        // non-existent path and throws DirectoryNotFoundException whenever the MSBuild-emitted
+        // WebApplicationFactoryContentRootAttribute isn't present in the test assembly.
+        var apiAssemblyDir = Path.GetDirectoryName(typeof(Program).Assembly.Location)!;
+        var apiProjectDir = Path.GetFullPath(Path.Combine(apiAssemblyDir, "..", "..", ".."));
+        builder.UseContentRoot(apiProjectDir);
+
         builder.UseEnvironment("Testing");
 
         // AddInfrastructure requires a non-empty ConnectionStrings:AppDb at host-build time.

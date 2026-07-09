@@ -9,10 +9,10 @@ using Microsoft.IdentityModel.Tokens;
 using AppointmentScheduler.Booking.Api.Endpoints;
 using AppointmentScheduler.Api.Endpoints;
 using AppointmentScheduler.Api.Security;
-using AppointmentScheduler.Application.Abstractions;
+using AppointmentScheduler.BuildingBlocks.Abstractions;
 using AppointmentScheduler.BuildingBlocks.Messaging;
 using AppointmentScheduler.Api;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 

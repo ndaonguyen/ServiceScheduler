@@ -1,6 +1,10 @@
-using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.BuildingBlocks.Messaging;
+using AppointmentScheduler.Booking.Application.Abstractions;
 using AppointmentScheduler.Booking.Domain;
+using AppointmentScheduler.BuildingBlocks.Abstractions;
+using AppointmentScheduler.BuildingBlocks.Messaging;
+using AppointmentScheduler.Catalog.Contracts;
+using AppointmentScheduler.Fleet.Contracts;
+using AppointmentScheduler.Workforce.Contracts;
 using FluentResults;
 
 namespace AppointmentScheduler.Booking.Application.Features;

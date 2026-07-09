@@ -3,7 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 
 namespace AppointmentScheduler.Api.Security;
 

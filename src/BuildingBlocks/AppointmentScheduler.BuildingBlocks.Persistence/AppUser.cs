@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace AppointmentScheduler.Infrastructure.Persistence;
+namespace AppointmentScheduler.BuildingBlocks.Persistence;
 
 /// <summary>
 /// The application's user. Extend with profile fields as needed (display name, etc.).

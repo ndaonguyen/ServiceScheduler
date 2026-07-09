@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using AppointmentScheduler.Workforce.Domain;
 
-namespace AppointmentScheduler.Infrastructure.Persistence.Configurations;
+namespace AppointmentScheduler.Workforce.Infrastructure.Configurations;
 
 /// <summary>Fluent mapping for <see cref="Technician"/> (Workforce module, snake_case columns).</summary>
 internal sealed class TechnicianConfiguration : IEntityTypeConfiguration<Technician>

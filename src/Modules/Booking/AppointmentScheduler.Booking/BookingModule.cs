@@ -1,5 +1,5 @@
 using System.Reflection;
-using AppointmentScheduler.Application.Abstractions;
+using AppointmentScheduler.Booking.Application.Abstractions;
 using AppointmentScheduler.BuildingBlocks.Messaging;
 using AppointmentScheduler.Booking.Infrastructure;
 

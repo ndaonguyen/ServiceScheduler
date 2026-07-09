@@ -1,7 +1,7 @@
-using AppointmentScheduler.Application.Abstractions;
+using AppointmentScheduler.Booking.Application.Abstractions;
 using AppointmentScheduler.Booking.Application.Features;
 using AppointmentScheduler.Booking.Domain;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 

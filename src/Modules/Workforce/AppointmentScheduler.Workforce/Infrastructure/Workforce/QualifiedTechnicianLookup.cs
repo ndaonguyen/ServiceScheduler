@@ -1,7 +1,7 @@
 using AppointmentScheduler.Workforce.Domain;
 using Microsoft.EntityFrameworkCore;
-using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.Workforce.Contracts;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 
 namespace AppointmentScheduler.Workforce.Infrastructure;
 

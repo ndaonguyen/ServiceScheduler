@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AppointmentScheduler.Infrastructure.Persistence;
+namespace AppointmentScheduler.BuildingBlocks.Persistence;
 
 public static class PersistenceRegistration
 {

@@ -1,6 +1,6 @@
 using AppointmentScheduler.Booking.Domain;
 
-namespace AppointmentScheduler.Application.Abstractions;
+namespace AppointmentScheduler.Booking.Application.Abstractions;
 
 /// <summary>
 /// Persistence port owned by the <b>Booking</b> module. Adds a new appointment and commits it, and

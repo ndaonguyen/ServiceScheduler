@@ -1,5 +1,5 @@
 using System.Reflection;
-using AppointmentScheduler.Application.Abstractions;
+using AppointmentScheduler.Fleet.Contracts;
 using AppointmentScheduler.BuildingBlocks.Messaging;
 using AppointmentScheduler.Fleet.Infrastructure;
 

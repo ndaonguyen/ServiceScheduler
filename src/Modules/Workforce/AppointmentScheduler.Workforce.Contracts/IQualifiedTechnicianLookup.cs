@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Application.Abstractions;
+namespace AppointmentScheduler.Workforce.Contracts;
 
 /// <summary>
 /// Cross-module read port owned by <b>Workforce</b>: lists technicians at a dealership who hold the

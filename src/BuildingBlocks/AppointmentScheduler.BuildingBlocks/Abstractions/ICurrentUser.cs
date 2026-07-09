@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Application.Abstractions;
+namespace AppointmentScheduler.BuildingBlocks.Abstractions;
 
 /// <summary>
 /// The authenticated caller, surfaced to the Application layer without a dependency on

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace AppointmentScheduler.Infrastructure.Persistence.Configurations;
+namespace AppointmentScheduler.BuildingBlocks.Persistence.Configurations;
 
 /// <summary>Fluent mapping for <see cref="RefreshToken"/> (snake_case columns, like widgets).</summary>
 internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>

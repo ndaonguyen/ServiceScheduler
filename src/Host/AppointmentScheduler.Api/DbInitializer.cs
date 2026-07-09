@@ -7,7 +7,7 @@ using AppointmentScheduler.Catalog.Domain;
 using AppointmentScheduler.Fleet.Domain;
 using AppointmentScheduler.Workforce.Domain;
 
-namespace AppointmentScheduler.Infrastructure.Persistence;
+namespace AppointmentScheduler.BuildingBlocks.Persistence;
 
 /// <summary>
 /// Applies pending EF Core migrations and seeds RBAC roles plus an optional development admin

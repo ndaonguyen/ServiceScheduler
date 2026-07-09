@@ -1,7 +1,7 @@
 using AppointmentScheduler.Catalog.Domain;
 using Microsoft.EntityFrameworkCore;
-using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.Catalog.Contracts;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 
 namespace AppointmentScheduler.Catalog.Infrastructure;
 

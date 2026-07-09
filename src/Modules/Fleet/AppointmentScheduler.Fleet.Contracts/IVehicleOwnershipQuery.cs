@@ -1,4 +1,4 @@
-namespace AppointmentScheduler.Application.Abstractions;
+namespace AppointmentScheduler.Fleet.Contracts;
 
 /// <summary>
 /// Cross-module read port owned by <b>Fleet</b>: checks whether a vehicle exists and is owned by the

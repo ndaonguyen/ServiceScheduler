@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using AppointmentScheduler.Api.Security;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 
 namespace AppointmentScheduler.Api.Endpoints;
 

@@ -6,9 +6,9 @@ namespace AppointmentScheduler.ArchitectureTests;
 
 /// <summary>
 /// Compiler-enforced module boundaries are backed up by these rules so a stray cross-module type
-/// reference fails the build. A module may depend on another module's <c>Contracts</c> (its ports
-/// live in the shared <c>AppointmentScheduler.Application.Abstractions</c> namespace) but never on
-/// another module's Domain or Infrastructure.
+/// reference fails the build. A module may depend on another module's <c>Contracts</c> project
+/// (whose ports live in <c>AppointmentScheduler.&lt;Module&gt;.Contracts</c>) but never on another
+/// module's Domain or Infrastructure.
 /// </summary>
 public class ModuleBoundaryTests
 {
@@ -29,9 +29,8 @@ public class ModuleBoundaryTests
     [MemberData(nameof(Modules))]
     public void Domain_has_no_persistence_or_web_dependencies(string name, System.Reflection.Assembly module)
     {
-        _ = name;
         var result = Types.InAssembly(module)
-            .That().ResideInNamespaceStartingWith("AppointmentScheduler.Domain")
+            .That().ResideInNamespaceStartingWith($"AppointmentScheduler.{name}.Domain")
             .ShouldNot().HaveDependencyOnAny("Microsoft.EntityFrameworkCore", "Npgsql", "Microsoft.AspNetCore")
             .GetResult();
 

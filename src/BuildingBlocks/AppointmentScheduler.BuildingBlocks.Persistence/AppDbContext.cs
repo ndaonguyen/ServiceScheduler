@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace AppointmentScheduler.Infrastructure.Persistence;
+namespace AppointmentScheduler.BuildingBlocks.Persistence;
 
 /// <summary>
 /// EF Core unit of work. Inherits the ASP.NET Core Identity schema and adds the application's own

@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace AppointmentScheduler.Infrastructure.Persistence;
+namespace AppointmentScheduler.BuildingBlocks.Persistence;
 
 /// <summary>
 /// The set of module assemblies whose <c>IEntityTypeConfiguration&lt;&gt;</c> implementations the

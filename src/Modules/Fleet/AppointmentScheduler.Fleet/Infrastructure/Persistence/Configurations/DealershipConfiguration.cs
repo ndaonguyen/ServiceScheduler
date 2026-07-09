@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using AppointmentScheduler.Fleet.Domain;
 
-namespace AppointmentScheduler.Infrastructure.Persistence.Configurations;
+namespace AppointmentScheduler.Fleet.Infrastructure.Configurations;
 
 /// <summary>Fluent mapping for <see cref="Dealership"/> (Fleet module, snake_case columns).</summary>
 internal sealed class DealershipConfiguration : IEntityTypeConfiguration<Dealership>

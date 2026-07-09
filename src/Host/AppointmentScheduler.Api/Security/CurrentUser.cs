@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using AppointmentScheduler.Application.Abstractions;
+using AppointmentScheduler.BuildingBlocks.Abstractions;
 
 namespace AppointmentScheduler.Api.Security;
 
