@@ -106,20 +106,17 @@ internal sealed class RequestAppointmentHandler(
             var technician = freeTechnicians[technicianIndex];
             var bay = freeBays[bayIndex];
 
-            var appointment = new Appointment
-            {
-                Id = Guid.NewGuid(),
-                OwnerId = ownerId,
-                VehicleId = request.VehicleId,
-                DealershipId = request.DealershipId,
-                ServiceTypeId = request.ServiceTypeId,
-                ServiceBayId = bay.Id,
-                TechnicianId = technician.Id,
-                ScheduledStart = start,
-                ScheduledEnd = end,
-                Status = AppointmentStatus.Confirmed,
-                CreatedAt = clock.GetUtcNow(),
-            };
+            // BR-07: the window is [start, start + duration); the aggregate enforces its invariants.
+            var appointment = Appointment.Schedule(
+                ownerId,
+                request.VehicleId,
+                request.DealershipId,
+                request.ServiceTypeId,
+                bay.Id,
+                technician.Id,
+                start,
+                serviceType.Duration,
+                clock.GetUtcNow());
 
             try
             {

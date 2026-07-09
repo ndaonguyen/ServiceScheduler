@@ -17,7 +17,13 @@ internal sealed class VehicleConfiguration : IEntityTypeConfiguration<Vehicle>
         builder.Property(v => v.Make).HasColumnName("make").IsRequired();
         builder.Property(v => v.Model).HasColumnName("model").IsRequired();
         builder.Property(v => v.Year).HasColumnName("year").IsRequired();
-        builder.Property(v => v.Vin).HasColumnName("vin").IsRequired();
+
+        // The Vin value object persists as its underlying string via a value converter (portable
+        // across EF providers); reading back re-validates through Vin.Create.
+        builder.Property(v => v.Vin)
+            .HasConversion(vin => vin.Value, value => Vin.Create(value))
+            .HasColumnName("vin")
+            .IsRequired();
 
         builder.HasIndex(v => v.OwnerId);
     }

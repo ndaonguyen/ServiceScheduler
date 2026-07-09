@@ -7,6 +7,26 @@ namespace AppointmentScheduler.Workforce.Domain;
 /// </summary>
 public sealed class TechnicianQualification
 {
-    public Guid TechnicianId { get; set; }
-    public Guid ServiceTypeId { get; set; }
+    private TechnicianQualification() { }
+
+    public Guid TechnicianId { get; private set; }
+    public Guid ServiceTypeId { get; private set; }
+
+    public static TechnicianQualification Create(Guid technicianId, Guid serviceTypeId)
+    {
+        if (technicianId == Guid.Empty)
+        {
+            throw new ArgumentException("A qualification must reference a technician.", nameof(technicianId));
+        }
+
+        if (serviceTypeId == Guid.Empty)
+        {
+            throw new ArgumentException("A qualification must reference a service type.", nameof(serviceTypeId));
+        }
+
+        return new TechnicianQualification { TechnicianId = technicianId, ServiceTypeId = serviceTypeId };
+    }
+
+    /// <summary>Domain rule: is this qualification for the given service type?</summary>
+    public bool IsFor(Guid serviceTypeId) => ServiceTypeId == serviceTypeId;
 }

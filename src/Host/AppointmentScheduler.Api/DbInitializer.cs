@@ -97,34 +97,22 @@ public static class DbInitializer
         }
 
         db.Set<ServiceType>().AddRange(
-            new ServiceType { Id = OilChangeId, Name = "Oil change", Duration = TimeSpan.FromMinutes(45) },
-            new ServiceType { Id = TireRotationId, Name = "Tire rotation", Duration = TimeSpan.FromMinutes(30) });
+            ServiceType.Create(OilChangeId, "Oil change", TimeSpan.FromMinutes(45)),
+            ServiceType.Create(TireRotationId, "Tire rotation", TimeSpan.FromMinutes(30)));
 
-        db.Set<Dealership>().Add(new Dealership
-        {
-            Id = DealershipId,
-            Name = "Springfield Downtown",
-            Address = "123 Main St, Springfield",
-        });
+        db.Set<Dealership>().Add(Dealership.Create(DealershipId, "Springfield Downtown", "123 Main St, Springfield"));
 
         db.Set<ServiceBay>().AddRange(
-            new ServiceBay { Id = Bay1Id, DealershipId = DealershipId, Label = "Bay 1" },
-            new ServiceBay { Id = Bay2Id, DealershipId = DealershipId, Label = "Bay 2" });
+            ServiceBay.Create(Bay1Id, DealershipId, "Bay 1"),
+            ServiceBay.Create(Bay2Id, DealershipId, "Bay 2"));
 
-        db.Set<Technician>().Add(new Technician { Id = TechnicianId, DealershipId = DealershipId, Name = "Alex Chen" });
+        db.Set<Technician>().Add(Technician.Create(TechnicianId, DealershipId, "Alex Chen"));
         db.Set<TechnicianQualification>().AddRange(
-            new TechnicianQualification { TechnicianId = TechnicianId, ServiceTypeId = OilChangeId },
-            new TechnicianQualification { TechnicianId = TechnicianId, ServiceTypeId = TireRotationId });
+            TechnicianQualification.Create(TechnicianId, OilChangeId),
+            TechnicianQualification.Create(TechnicianId, TireRotationId));
 
-        db.Set<Vehicle>().Add(new Vehicle
-        {
-            Id = VehicleId,
-            OwnerId = customer!.Id,
-            Make = "Toyota",
-            Model = "Corolla",
-            Year = 2020,
-            Vin = "JTDBR32E020000001",
-        });
+        db.Set<Vehicle>().Add(
+            Vehicle.Create(VehicleId, customer!.Id, "Toyota", "Corolla", 2020, "JTDBR32E020000001"));
 
         await db.SaveChangesAsync(cancellationToken);
     }

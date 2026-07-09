@@ -10,16 +10,14 @@ internal sealed class VehicleOwnershipQuery(AppDbContext db) : IVehicleOwnership
 {
     public async Task<VehicleOwnership> CheckAsync(Guid vehicleId, string ownerId, CancellationToken ct = default)
     {
-        var owner = await db.Set<Vehicle>()
-            .Where(v => v.Id == vehicleId)
-            .Select(v => v.OwnerId)
-            .SingleOrDefaultAsync(ct);
+        var vehicle = await db.Set<Vehicle>().FirstOrDefaultAsync(v => v.Id == vehicleId, ct);
 
-        if (owner is null)
+        if (vehicle is null)
         {
             return VehicleOwnership.NotFound;
         }
 
-        return owner == ownerId ? VehicleOwnership.Owned : VehicleOwnership.NotOwned;
+        // The ownership rule lives on the aggregate (Vehicle.IsOwnedBy), not in this adapter.
+        return vehicle.IsOwnedBy(ownerId) ? VehicleOwnership.Owned : VehicleOwnership.NotOwned;
     }
 }

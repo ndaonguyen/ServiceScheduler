@@ -19,6 +19,10 @@ internal sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appoin
         builder.Property(a => a.ServiceTypeId).HasColumnName("service_type_id").IsRequired();
         builder.Property(a => a.ServiceBayId).HasColumnName("service_bay_id").IsRequired();
         builder.Property(a => a.TechnicianId).HasColumnName("technician_id").IsRequired();
+
+        // The reserved window persists as two scalar columns (the Appointment.Slot value object is a
+        // facade over them). Scalar columns keep the BR-03 overlap query translatable on every EF
+        // provider, and leave the #6 EXCLUDE constraint over these columns unaffected.
         builder.Property(a => a.ScheduledStart).HasColumnName("scheduled_start").IsRequired();
         builder.Property(a => a.ScheduledEnd).HasColumnName("scheduled_end").IsRequired();
         builder.Property(a => a.Status).HasColumnName("status").HasConversion<string>().IsRequired();

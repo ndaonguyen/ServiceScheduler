@@ -4,11 +4,11 @@ using AppointmentScheduler.Booking.Domain;
 namespace AppointmentScheduler.Booking.Application.Features;
 
 /// <summary>
-/// BR-03 half-open overlap: an appointment's <c>[ScheduledStart, ScheduledEnd)</c> intersects the
-/// requested <c>[start, end)</c> iff <c>ScheduledStart &lt; end &amp;&amp; ScheduledEnd &gt; start</c>.
-/// An appointment ending exactly at the requested start (or starting exactly at the requested end)
-/// therefore does <b>not</b> conflict. Expressed once so the EF query (translated to SQL) and the unit
-/// tests (compiled) share a single definition of "conflict".
+/// BR-03 half-open overlap as an EF-translatable predicate over the scalar schedule columns: an
+/// appointment intersects the requested <c>[start, end)</c> iff
+/// <c>ScheduledStart &lt; end &amp;&amp; ScheduledEnd &gt; start</c>. Mirrors <see cref="TimeSlot.Overlaps"/>
+/// (which EF cannot translate as a method call) so the SQL query and the compiled unit tests share
+/// one definition of "conflict".
 /// </summary>
 public static class AppointmentOverlap
 {
