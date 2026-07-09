@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Modules\Fleet\AppointmentScheduler.Fleet\AppointmentScheduler.Fleet.csproj" />
     <ProjectReference Include="..\..\src\Modules\Workforce\AppointmentScheduler.Workforce\AppointmentScheduler.Workforce.csproj" />
     <ProjectReference Include="..\..\src\Modules\Catalog\AppointmentScheduler.Catalog\AppointmentScheduler.Catalog.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\AppointmentScheduler.BuildingBlocks.SharedKernel\AppointmentScheduler.BuildingBlocks.SharedKernel.csproj" />
   </ItemGroup>
 
 </Project>

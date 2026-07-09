@@ -1,3 +1,5 @@
+using AppointmentScheduler.BuildingBlocks.SharedKernel;
+
 namespace AppointmentScheduler.Catalog.Domain;
 
 /// <summary>
@@ -5,11 +7,10 @@ namespace AppointmentScheduler.Catalog.Domain;
 /// alone determines an appointment's length — never client input (PRD BR-07). Created through
 /// <see cref="Create"/>, which guarantees a positive duration.
 /// </summary>
-public sealed class ServiceType
+public sealed class ServiceType : Entity<Guid>, IAggregateRoot
 {
     private ServiceType() { }
 
-    public Guid Id { get; private set; }
     public string Name { get; private set; } = default!;
     public TimeSpan Duration { get; private set; }
 

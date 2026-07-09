@@ -1,11 +1,12 @@
+using AppointmentScheduler.BuildingBlocks.SharedKernel;
+
 namespace AppointmentScheduler.Fleet.Domain;
 
 /// <summary>A dealership location that owns service bays and employs technicians.</summary>
-public sealed class Dealership
+public sealed class Dealership : Entity<Guid>, IAggregateRoot
 {
     private Dealership() { }
 
-    public Guid Id { get; private set; }
     public string Name { get; private set; } = default!;
     public string Address { get; private set; } = default!;
 

@@ -1,11 +1,12 @@
+using AppointmentScheduler.BuildingBlocks.SharedKernel;
+
 namespace AppointmentScheduler.Fleet.Domain;
 
 /// <summary>A physical service bay belonging to a <see cref="Dealership"/>.</summary>
-public sealed class ServiceBay
+public sealed class ServiceBay : Entity<Guid>, IAggregateRoot
 {
     private ServiceBay() { }
 
-    public Guid Id { get; private set; }
     public Guid DealershipId { get; private set; }
     public string Label { get; private set; } = default!;
 

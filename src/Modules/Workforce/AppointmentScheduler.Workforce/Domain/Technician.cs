@@ -1,14 +1,15 @@
+using AppointmentScheduler.BuildingBlocks.SharedKernel;
+
 namespace AppointmentScheduler.Workforce.Domain;
 
 /// <summary>
 /// A technician employed at a dealership (Workforce aggregate root). Skills are recorded via
 /// <see cref="TechnicianQualification"/>. Created through <see cref="Create"/>.
 /// </summary>
-public sealed class Technician
+public sealed class Technician : Entity<Guid>, IAggregateRoot
 {
     private Technician() { }
 
-    public Guid Id { get; private set; }
     public Guid DealershipId { get; private set; }
     public string Name { get; private set; } = default!;
 

@@ -49,6 +49,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppointmentScheduler.Applic
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppointmentScheduler.ArchitectureTests", "tests\AppointmentScheduler.ArchitectureTests\AppointmentScheduler.ArchitectureTests.csproj", "{5FD434AA-3B33-4006-A211-B682FC9C3656}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppointmentScheduler.BuildingBlocks.SharedKernel", "src\BuildingBlocks\AppointmentScheduler.BuildingBlocks.SharedKernel\AppointmentScheduler.BuildingBlocks.SharedKernel.csproj", "{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -227,6 +229,18 @@ Global
 		{5FD434AA-3B33-4006-A211-B682FC9C3656}.Release|x64.Build.0 = Release|Any CPU
 		{5FD434AA-3B33-4006-A211-B682FC9C3656}.Release|x86.ActiveCfg = Release|Any CPU
 		{5FD434AA-3B33-4006-A211-B682FC9C3656}.Release|x86.Build.0 = Release|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Debug|x64.Build.0 = Debug|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Debug|x86.Build.0 = Debug|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Release|x64.ActiveCfg = Release|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Release|x64.Build.0 = Release|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Release|x86.ActiveCfg = Release|Any CPU
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -253,5 +267,6 @@ Global
 		{A27034AB-15AA-4ED6-AA28-ABE1B1CF10FA} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{E04F4626-80D9-4E48-9C8E-2E3F095151B4} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{5FD434AA-3B33-4006-A211-B682FC9C3656} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{C1FF47AF-9E7E-4E0E-B08F-4C30713C2301} = {90298CBA-BD6F-3A0A-69D5-97CAD7B05E7E}
 	EndGlobalSection
 EndGlobal

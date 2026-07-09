@@ -11,6 +11,7 @@
     <ProjectReference Include="..\AppointmentScheduler.Catalog.Contracts\AppointmentScheduler.Catalog.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\AppointmentScheduler.BuildingBlocks\AppointmentScheduler.BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\AppointmentScheduler.BuildingBlocks.Persistence\AppointmentScheduler.BuildingBlocks.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\AppointmentScheduler.BuildingBlocks.SharedKernel\AppointmentScheduler.BuildingBlocks.SharedKernel.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,5 @@
+using AppointmentScheduler.BuildingBlocks.SharedKernel;
+
 namespace AppointmentScheduler.Booking.Domain;
 
 /// <summary>
@@ -9,12 +11,10 @@ namespace AppointmentScheduler.Booking.Domain;
 /// Constructed only through <see cref="Schedule"/>, which enforces the aggregate's invariants;
 /// setters are private so the appointment cannot be mutated into an invalid state from outside.
 /// </summary>
-public sealed class Appointment
+public sealed class Appointment : Entity<Guid>, IAggregateRoot
 {
     // EF materialization uses this; application code goes through Schedule(...).
     private Appointment() { }
-
-    public Guid Id { get; private set; }
 
     /// <summary>Owning customer's <c>AppUser.Id</c> (opaque string).</summary>
     public string OwnerId { get; private set; } = default!;

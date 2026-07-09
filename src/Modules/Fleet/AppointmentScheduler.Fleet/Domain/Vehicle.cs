@@ -1,3 +1,5 @@
+using AppointmentScheduler.BuildingBlocks.SharedKernel;
+
 namespace AppointmentScheduler.Fleet.Domain;
 
 /// <summary>
@@ -5,11 +7,9 @@ namespace AppointmentScheduler.Fleet.Domain;
 /// <see cref="OwnerId"/> → <c>AppUser.Id</c>; there is no separate Customer aggregate (PRD AS-02).
 /// Created through <see cref="Create"/>, which enforces the invariants; setters are private.
 /// </summary>
-public sealed class Vehicle
+public sealed class Vehicle : Entity<Guid>, IAggregateRoot
 {
     private Vehicle() { }
-
-    public Guid Id { get; private set; }
 
     /// <summary>Owning customer's <c>AppUser.Id</c> (opaque string).</summary>
     public string OwnerId { get; private set; } = default!;
