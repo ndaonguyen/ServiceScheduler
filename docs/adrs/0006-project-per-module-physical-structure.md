@@ -60,11 +60,10 @@ Three sub-decisions:
    scanning the assemblies named in a host-supplied `ModuleConfigurations`. When a module is
    extracted, its schema's tables move with it.
 
-3. **Namespaces are preserved** from the pre-restructure layout
-   (`AppointmentScheduler.<Layer>.<Module>`). Boundary enforcement comes from the reference graph
-   and the arch tests, not from namespaces, so this was a physical *lift* with near-zero churn to
-   `using` statements. A namespace tidy-up (to `AppointmentScheduler.<Module>.<Layer>`) is a
-   possible cosmetic follow-up, not a correctness requirement.
+3. **Namespaces mirror the project/module** (`AppointmentScheduler.<Module>.<Layer>`, e.g.
+   `AppointmentScheduler.Fleet.Infrastructure`). The move was executed as a physical lift first
+   (namespaces preserved) and then aligned to the project layout; boundary enforcement comes from
+   the reference graph and the arch tests regardless of namespace.
 
 ## Alternatives Considered
 

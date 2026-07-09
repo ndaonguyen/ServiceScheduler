@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using AppointmentScheduler.Workforce.Domain;
 
-namespace AppointmentScheduler.Workforce.Infrastructure.Configurations;
+namespace AppointmentScheduler.Workforce.Infrastructure;
 
 /// <summary>
 /// Fluent mapping for <see cref="TechnicianQualification"/> (Workforce module, snake_case columns).

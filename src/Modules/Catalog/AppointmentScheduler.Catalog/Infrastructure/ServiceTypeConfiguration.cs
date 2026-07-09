@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using AppointmentScheduler.Catalog.Domain;
 
-namespace AppointmentScheduler.Catalog.Infrastructure.Configurations;
+namespace AppointmentScheduler.Catalog.Infrastructure;
 
 /// <summary>Fluent mapping for <see cref="ServiceType"/> (Catalog module, snake_case columns).</summary>
 internal sealed class ServiceTypeConfiguration : IEntityTypeConfiguration<ServiceType>

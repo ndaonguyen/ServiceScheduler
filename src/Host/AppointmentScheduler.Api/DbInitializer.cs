@@ -2,12 +2,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 using AppointmentScheduler.Booking.Domain;
 using AppointmentScheduler.Catalog.Domain;
 using AppointmentScheduler.Fleet.Domain;
 using AppointmentScheduler.Workforce.Domain;
 
-namespace AppointmentScheduler.BuildingBlocks.Persistence;
+namespace AppointmentScheduler.Api;
 
 /// <summary>
 /// Applies pending EF Core migrations and seeds RBAC roles plus an optional development admin

@@ -27,9 +27,9 @@ tests/{Application.Tests, Api.Tests, ArchitectureTests}
 ```
 
 A module references its own `Contracts`, the `BuildingBlocks`, and **other modules' `Contracts`
-only** — never another module's implementation. Namespaces are preserved from the pre-restructure
-layout (`AppointmentScheduler.<Layer>.<Module>`), so they do **not** strictly mirror the new
-project/folder — enforcement is by the reference graph + arch tests, not by namespace.
+only** — never another module's implementation. Namespaces mirror the project + folder
+(`AppointmentScheduler.<Module>.<Layer>`, e.g. `AppointmentScheduler.Fleet.Infrastructure`);
+boundary enforcement is by the reference graph + arch tests.
 
 ## Architecture principles
 
@@ -117,9 +117,9 @@ as folders inside it, plus a sibling `AppointmentScheduler.<Module>.Contracts` p
   handlers (`Application/Features/<Module>/Events/`), and any module-internal port. The shared
   mediator (`Messaging/Mediator.cs`, `ISender`, `IRequestHandler<TRequest,TResponse>`) lives in
   `AppointmentScheduler.BuildingBlocks`, not per-module.
-- **Infrastructure** — `IEntityTypeConfiguration<T>` per aggregate
-  (`Infrastructure/Persistence/Configurations/`, each setting the module schema), repository / query-
-  port implementations (`Infrastructure/<Module>/`) over the shared `AppDbContext`.
+- **Infrastructure** — `IEntityTypeConfiguration<T>` per aggregate (each setting the module schema)
+  and repository / query-port implementations over the shared `AppDbContext`, all **flat** directly
+  under `Infrastructure/` (namespace `AppointmentScheduler.<Module>.Infrastructure`).
 - **Contracts** (`AppointmentScheduler.<Module>.Contracts`) — the module's public surface for other
   modules: the cross-module query ports + DTOs it provides (and, later, the events it publishes).
 - **Composition** — `<Module>Module.cs` exposes `Add<Module>Module(this IServiceCollection)` (scans
@@ -143,10 +143,8 @@ as folders inside it, plus a sibling `AppointmentScheduler.<Module>.Contracts` p
 
 ## Conventions
 
-- **Namespaces are preserved** from the pre-restructure layout
-  (`AppointmentScheduler.<Layer>.<Module>`) and do **not** mirror the new project/folder — new code
-  should follow the namespace of the folder it sits beside, not invent a project-based one. One type
-  per file where practical.
+- **Namespaces mirror the project + folder** (`AppointmentScheduler.<Module>.<Layer>`); one type per
+  file where practical.
 - **Endpoints** live in `Endpoints/<Module>Endpoints.cs` (in the Host) as an extension method
   `MapXxxEndpoints(this IEndpointRouteBuilder app)`; register in `Program.cs`.
 - **Handler naming**: `Features/<Module>/<Verb><Aggregate>.cs` (e.g. `RequestAppointment.cs`),
@@ -154,9 +152,8 @@ as folders inside it, plus a sibling `AppointmentScheduler.<Module>.Contracts` p
 - **Event naming**: past tense, one record per event, in `Features/<Module>/Events/`
   (e.g. `AppointmentConfirmed.cs`). Event handlers live in the **consuming** module under
   `Features/<ConsumerModule>/Events/On<Event>.cs`.
-- **EF configurations** in the owning module's
-  `Infrastructure/Persistence/Configurations/<Aggregate>Configuration.cs`, each setting the module
-  schema via `ToTable("<table>", "<schema>")`; column names snake_case.
+- **EF configurations** in the owning module's `Infrastructure/<Aggregate>Configuration.cs`, each
+  setting the module schema via `ToTable("<table>", "<schema>")`; column names snake_case.
 - **Nothing references Infrastructure/Api implementation across a layer or module boundary**; the
   dependency direction is enforced by the csproj `ProjectReference` graph
   (`BuildingBlocks*` ← `*.Contracts` ← `<Module>` ← `Host`).

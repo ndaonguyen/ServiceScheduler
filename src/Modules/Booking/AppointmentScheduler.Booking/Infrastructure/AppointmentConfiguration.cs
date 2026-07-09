@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using AppointmentScheduler.Booking.Domain;
 
-namespace AppointmentScheduler.Booking.Infrastructure.Configurations;
+namespace AppointmentScheduler.Booking.Infrastructure;
 
 /// <summary>Fluent mapping for <see cref="Appointment"/> (Booking module, snake_case columns).</summary>
 internal sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
