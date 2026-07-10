@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using AppointmentScheduler.Domain.Catalog;
-using AppointmentScheduler.Domain.Fleet;
-using AppointmentScheduler.Domain.Workforce;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.Catalog.Domain;
+using AppointmentScheduler.Fleet.Domain;
+using AppointmentScheduler.Workforce.Domain;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -76,20 +76,12 @@ public class BookingEndpointsTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        db.ServiceTypes.Add(new ServiceType { Id = serviceTypeId, Name = "Oil change", Duration = TimeSpan.FromMinutes(45) });
-        db.Dealerships.Add(new Dealership { Id = dealershipId, Name = "Springfield Downtown", Address = "123 Main St" });
-        db.ServiceBays.Add(new ServiceBay { Id = bayId, DealershipId = dealershipId, Label = "Bay 1" });
-        db.Technicians.Add(new Technician { Id = technicianId, DealershipId = dealershipId, Name = "Alex Chen" });
-        db.TechnicianQualifications.Add(new TechnicianQualification { TechnicianId = technicianId, ServiceTypeId = serviceTypeId });
-        db.Vehicles.Add(new Vehicle
-        {
-            Id = vehicleId,
-            OwnerId = OwnerId,
-            Make = "Toyota",
-            Model = "Corolla",
-            Year = 2020,
-            Vin = "JTDBR32E020000001",
-        });
+        db.Set<ServiceType>().Add(ServiceType.Create(serviceTypeId, "Oil change", TimeSpan.FromMinutes(45)));
+        db.Set<Dealership>().Add(Dealership.Create(dealershipId, "Springfield Downtown", "123 Main St"));
+        db.Set<ServiceBay>().Add(ServiceBay.Create(bayId, dealershipId, "Bay 1"));
+        db.Set<Technician>().Add(Technician.Create(technicianId, dealershipId, "Alex Chen"));
+        db.Set<TechnicianQualification>().Add(TechnicianQualification.Create(technicianId, serviceTypeId));
+        db.Set<Vehicle>().Add(Vehicle.Create(vehicleId, OwnerId, "Toyota", "Corolla", 2020, "JTDBR32E020000001"));
 
         await db.SaveChangesAsync();
 

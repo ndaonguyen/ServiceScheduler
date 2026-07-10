@@ -23,7 +23,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\source\AppointmentScheduler.Application\AppointmentScheduler.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Booking\AppointmentScheduler.Booking\AppointmentScheduler.Booking.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Fleet\AppointmentScheduler.Fleet.Contracts\AppointmentScheduler.Fleet.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Catalog\AppointmentScheduler.Catalog.Contracts\AppointmentScheduler.Catalog.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Workforce\AppointmentScheduler.Workforce.Contracts\AppointmentScheduler.Workforce.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\AppointmentScheduler.BuildingBlocks\AppointmentScheduler.BuildingBlocks.csproj" />
   </ItemGroup>
 
 </Project>

@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\source\AppointmentScheduler.Api\AppointmentScheduler.Api.csproj" />
+    <ProjectReference Include="..\..\src\Host\AppointmentScheduler.Api\AppointmentScheduler.Api.csproj" />
   </ItemGroup>
 
 </Project>

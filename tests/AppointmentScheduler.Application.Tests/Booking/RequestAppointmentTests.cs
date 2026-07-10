@@ -1,6 +1,10 @@
-using AppointmentScheduler.Application.Abstractions;
-using AppointmentScheduler.Application.Features.Booking;
-using AppointmentScheduler.Domain.Booking;
+using AppointmentScheduler.Booking.Application.Abstractions;
+using AppointmentScheduler.Booking.Application.Features;
+using AppointmentScheduler.Booking.Domain;
+using AppointmentScheduler.BuildingBlocks.Abstractions;
+using AppointmentScheduler.Catalog.Contracts;
+using AppointmentScheduler.Fleet.Contracts;
+using AppointmentScheduler.Workforce.Contracts;
 using AwesomeAssertions;
 using FluentResults;
 using Xunit;
@@ -73,8 +77,8 @@ public class RequestAppointmentTests
         result.IsSuccess.Should().BeTrue();
         result.Value.ScheduledStart.Should().Be(FutureStart);
         result.Value.ScheduledEnd.Should().Be(FutureStart.AddMinutes(45));
-        repo.Added!.ScheduledStart.Should().Be(FutureStart);
-        repo.Added.ScheduledEnd.Should().Be(FutureStart.AddMinutes(45));
+        repo.Added!.Slot.Start.Should().Be(FutureStart);
+        repo.Added.Slot.End.Should().Be(FutureStart.AddMinutes(45));
     }
 
     // AT-05 / VR-05: unknown service type -> 404 SERVICE_TYPE_NOT_FOUND; nothing persisted.
@@ -337,20 +341,16 @@ public class RequestAppointmentTests
 
     // A confirmed appointment occupying the given bay/technician over [start, end).
     private static Appointment Confirmed(Guid bayId, Guid technicianId, DateTimeOffset start, DateTimeOffset end) =>
-        new()
-        {
-            Id = Guid.NewGuid(),
-            OwnerId = "other-owner",
-            VehicleId = Guid.NewGuid(),
-            DealershipId = DealershipId,
-            ServiceTypeId = ServiceTypeId,
-            ServiceBayId = bayId,
-            TechnicianId = technicianId,
-            ScheduledStart = start,
-            ScheduledEnd = end,
-            Status = AppointmentStatus.Confirmed,
-            CreatedAt = start,
-        };
+        Appointment.Schedule(
+            ownerId: "other-owner",
+            vehicleId: Guid.NewGuid(),
+            dealershipId: DealershipId,
+            serviceTypeId: ServiceTypeId,
+            serviceBayId: bayId,
+            technicianId: technicianId,
+            start: start,
+            duration: end - start,
+            createdAt: start);
 
     // --- hand-rolled fakes (no mocking library in this repo) ---
 

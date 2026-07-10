@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using AppointmentScheduler.Infrastructure.Persistence;
+using AppointmentScheduler.BuildingBlocks.Persistence;
 
 namespace AppointmentScheduler.Api.Tests;
 
@@ -25,6 +25,12 @@ internal class TestWebAppFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Pin ContentRoot to the Api project directory. WAF's built-in fallback tries
+        // <solution-root>/<assembly-name>/, which under our src/Host/ layout resolves to a
+        // non-existent path and throws DirectoryNotFoundException whenever the MSBuild-emitted
+        // WebApplicationFactoryContentRootAttribute isn't present in the test assembly.
+        builder.UseContentRoot(LocateApiContentRoot());
+
         builder.UseEnvironment("Testing");
 
         // AddInfrastructure requires a non-empty ConnectionStrings:AppDb at host-build time.
@@ -72,6 +78,28 @@ internal class TestWebAppFactory : WebApplicationFactory<Program>
                 options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
             });
         });
+    }
+
+    /// <summary>
+    /// Walks up from the test's output directory to the repo root (the folder holding
+    /// <c>AppointmentScheduler.sln</c>) and joins the known relative path of the Api project.
+    /// Robust against the assembly being shadow-copied into the test's own bin.
+    /// </summary>
+    private static string LocateApiContentRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "AppointmentScheduler.sln")))
+        {
+            dir = dir.Parent;
+        }
+
+        if (dir is null)
+        {
+            throw new InvalidOperationException(
+                "Could not locate AppointmentScheduler.sln by walking up from " + AppContext.BaseDirectory);
+        }
+
+        return Path.Combine(dir.FullName, "src", "Host", "AppointmentScheduler.Api");
     }
 
     /// <summary>Creates a client authenticated as <paramref name="userId"/> with the given roles.</summary>
