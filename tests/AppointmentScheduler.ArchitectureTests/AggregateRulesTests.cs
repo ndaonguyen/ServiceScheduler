@@ -62,6 +62,54 @@ public class AggregateRulesTests
             + string.Join(", ", offenders));
     }
 
+    // Every aggregate root carries identity: root-ness (IAggregateRoot) is an id-agnostic marker,
+    // but a root is always an entity, so it must derive from Entity<TId>. This is the mechanical
+    // backstop for the "every root is an entity" invariant that is otherwise only a convention.
+    [Fact]
+    public void Aggregate_roots_are_entities()
+    {
+        var offenders =
+            (from asm in ModuleAssemblies
+             from type in asm.GetTypes()
+             where typeof(IAggregateRoot).IsAssignableFrom(type) && type is { IsInterface: false, IsAbstract: false }
+             where !InheritsEntity(type)
+             select type.Name).ToList();
+
+        offenders.Should().BeEmpty(
+            "every aggregate root must carry identity via Entity<TId>: " + string.Join(", ", offenders));
+    }
+
+    // Value objects (IValueObject) are structural-equality records with no identity of their own —
+    // they must never be modelled as entities.
+    [Fact]
+    public void Value_objects_are_not_entities()
+    {
+        var offenders =
+            (from asm in ModuleAssemblies
+             from type in asm.GetTypes()
+             where typeof(IValueObject).IsAssignableFrom(type) && type is { IsInterface: false, IsAbstract: false }
+             where InheritsEntity(type)
+             select type.Name).ToList();
+
+        offenders.Should().BeEmpty(
+            "value objects must not be entities (model them as records, not Entity<TId>): "
+            + string.Join(", ", offenders));
+    }
+
+    // Walks the base chain looking for the open generic Entity<> — handles any TId.
+    private static bool InheritsEntity(Type type)
+    {
+        for (var t = type.BaseType; t is not null; t = t.BaseType)
+        {
+            if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Entity<>))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static string Offenders(IEnumerable<string>? names) =>
         names is null ? "none" : string.Join(", ", names);
 }

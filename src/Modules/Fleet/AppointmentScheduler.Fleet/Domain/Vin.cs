@@ -1,3 +1,5 @@
+using AppointmentScheduler.BuildingBlocks.SharedKernel;
+
 namespace AppointmentScheduler.Fleet.Domain;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace AppointmentScheduler.Fleet.Domain;
 /// VIN cannot exist: construction goes through <see cref="Create"/>, so the format rules (the
 /// "is this valid?" logic) live here in the domain rather than in a service or handler.
 /// </summary>
-public sealed record Vin
+public sealed record Vin : IValueObject
 {
     public string Value { get; }
 

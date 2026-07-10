@@ -1,3 +1,5 @@
+using AppointmentScheduler.BuildingBlocks.SharedKernel;
+
 namespace AppointmentScheduler.Booking.Domain;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace AppointmentScheduler.Booking.Domain;
 /// self-validating). Encapsulates the BR-03 overlap rule so "do these windows conflict?" has a
 /// single definition shared by the domain, the EF query, and the tests.
 /// </summary>
-public sealed record TimeSlot
+public sealed record TimeSlot : IValueObject
 {
     public DateTimeOffset Start { get; }
     public DateTimeOffset End { get; }
