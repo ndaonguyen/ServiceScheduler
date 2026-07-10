@@ -53,41 +53,27 @@ public sealed class Appointment : Entity<Guid>, IAggregateRoot
         TimeSpan duration,
         DateTimeOffset createdAt)
     {
-        if (string.IsNullOrWhiteSpace(ownerId))
-        {
-            throw new ArgumentException("An appointment must have an owner.", nameof(ownerId));
-        }
-
-        RequirePresent(vehicleId, nameof(vehicleId));
-        RequirePresent(dealershipId, nameof(dealershipId));
-        RequirePresent(serviceTypeId, nameof(serviceTypeId));
-        RequirePresent(serviceBayId, nameof(serviceBayId));
-        RequirePresent(technicianId, nameof(technicianId));
+        Guard.NotNullOrWhiteSpace(ownerId, nameof(ownerId), "An appointment must have an owner.");
 
         // Building the value object validates the window (end > start) before we persist it.
         var slot = TimeSlot.FromDuration(start, duration);
 
         return new Appointment
         {
+            // Appointment is runtime, transactional data with no externally-known id, so it assigns
+            // its own. (Seed/reference aggregates — Vehicle, Dealership, etc. — instead take a
+            // caller-supplied id so their identity is stable across re-seeds.)
             Id = Guid.NewGuid(),
             OwnerId = ownerId,
-            VehicleId = vehicleId,
-            DealershipId = dealershipId,
-            ServiceTypeId = serviceTypeId,
-            ServiceBayId = serviceBayId,
-            TechnicianId = technicianId,
+            VehicleId = Guard.NotEmpty(vehicleId, nameof(vehicleId)),
+            DealershipId = Guard.NotEmpty(dealershipId, nameof(dealershipId)),
+            ServiceTypeId = Guard.NotEmpty(serviceTypeId, nameof(serviceTypeId)),
+            ServiceBayId = Guard.NotEmpty(serviceBayId, nameof(serviceBayId)),
+            TechnicianId = Guard.NotEmpty(technicianId, nameof(technicianId)),
             ScheduledStart = slot.Start,
             ScheduledEnd = slot.End,
             Status = AppointmentStatus.Confirmed,
             CreatedAt = createdAt,
         };
-    }
-
-    private static void RequirePresent(Guid id, string name)
-    {
-        if (id == Guid.Empty)
-        {
-            throw new ArgumentException($"{name} is required.", name);
-        }
     }
 }

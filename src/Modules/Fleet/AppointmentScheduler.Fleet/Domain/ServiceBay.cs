@@ -10,23 +10,11 @@ public sealed class ServiceBay : Entity<Guid>, IAggregateRoot
     public Guid DealershipId { get; private set; }
     public string Label { get; private set; } = default!;
 
-    public static ServiceBay Create(Guid id, Guid dealershipId, string label)
-    {
-        if (id == Guid.Empty)
+    public static ServiceBay Create(Guid id, Guid dealershipId, string label) =>
+        new()
         {
-            throw new ArgumentException("Id is required.", nameof(id));
-        }
-
-        if (dealershipId == Guid.Empty)
-        {
-            throw new ArgumentException("A service bay must belong to a dealership.", nameof(dealershipId));
-        }
-
-        if (string.IsNullOrWhiteSpace(label))
-        {
-            throw new ArgumentException("A service bay must have a label.", nameof(label));
-        }
-
-        return new ServiceBay { Id = id, DealershipId = dealershipId, Label = label };
-    }
+            Id = Guard.NotEmpty(id, nameof(id)),
+            DealershipId = Guard.NotEmpty(dealershipId, nameof(dealershipId), "A service bay must belong to a dealership."),
+            Label = Guard.NotNullOrWhiteSpace(label, nameof(label), "A service bay must have a label."),
+        };
 }
