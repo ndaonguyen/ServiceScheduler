@@ -1,9 +1,17 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
   <PropertyGroup>
     <!-- Set this variable to be available inside every project build. -->
     <RepositoryRootDir>$(MSBuildThisFileDirectory)</RepositoryRootDir>
-  </PropertyGroup>
-  <PropertyGroup>
     <PublishDir>$(MSBuildProjectDirectory)\..\..\output\apps\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)</PublishDir>
+  </PropertyGroup>
+
+  <!-- Common language/runtime settings for every project in the repo. Keep these here so leaf
+       .csproj files only carry what is specific to them (package references, IsPackable, …). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>14</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 </Project>

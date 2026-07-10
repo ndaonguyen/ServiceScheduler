@@ -21,26 +21,6 @@ public sealed class Vehicle : Entity<Guid>, IAggregateRoot
 
     public static Vehicle Create(Guid id, string ownerId, string make, string model, int year, string vin)
     {
-        if (id == Guid.Empty)
-        {
-            throw new ArgumentException("Id is required.", nameof(id));
-        }
-
-        if (string.IsNullOrWhiteSpace(ownerId))
-        {
-            throw new ArgumentException("A vehicle must have an owner.", nameof(ownerId));
-        }
-
-        if (string.IsNullOrWhiteSpace(make))
-        {
-            throw new ArgumentException("Make is required.", nameof(make));
-        }
-
-        if (string.IsNullOrWhiteSpace(model))
-        {
-            throw new ArgumentException("Model is required.", nameof(model));
-        }
-
         if (year is < 1900 or > 2200)
         {
             throw new ArgumentOutOfRangeException(nameof(year), year, "Model year is out of range.");
@@ -48,10 +28,10 @@ public sealed class Vehicle : Entity<Guid>, IAggregateRoot
 
         return new Vehicle
         {
-            Id = id,
-            OwnerId = ownerId,
-            Make = make,
-            Model = model,
+            Id = Guard.NotEmpty(id, nameof(id)),
+            OwnerId = Guard.NotNullOrWhiteSpace(ownerId, nameof(ownerId), "A vehicle must have an owner."),
+            Make = Guard.NotNullOrWhiteSpace(make, nameof(make), "Make is required."),
+            Model = Guard.NotNullOrWhiteSpace(model, nameof(model), "Model is required."),
             Year = year,
             Vin = Vin.Create(vin),
         };

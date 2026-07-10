@@ -13,23 +13,11 @@ public sealed class Technician : Entity<Guid>, IAggregateRoot
     public Guid DealershipId { get; private set; }
     public string Name { get; private set; } = default!;
 
-    public static Technician Create(Guid id, Guid dealershipId, string name)
-    {
-        if (id == Guid.Empty)
+    public static Technician Create(Guid id, Guid dealershipId, string name) =>
+        new()
         {
-            throw new ArgumentException("Id is required.", nameof(id));
-        }
-
-        if (dealershipId == Guid.Empty)
-        {
-            throw new ArgumentException("A technician must belong to a dealership.", nameof(dealershipId));
-        }
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("A technician must have a name.", nameof(name));
-        }
-
-        return new Technician { Id = id, DealershipId = dealershipId, Name = name };
-    }
+            Id = Guard.NotEmpty(id, nameof(id)),
+            DealershipId = Guard.NotEmpty(dealershipId, nameof(dealershipId), "A technician must belong to a dealership."),
+            Name = Guard.NotNullOrWhiteSpace(name, nameof(name), "A technician must have a name."),
+        };
 }

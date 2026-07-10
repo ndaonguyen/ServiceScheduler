@@ -20,5 +20,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # Observability backend: receives the API's OpenTelemetry traces + metrics over OTLP and renders
+  # them in a live UI. The API exports to http://localhost:4317 by default (Program.cs), which maps
+  # to this container's OTLP receiver below — no app config needed. Open the dashboard at
+  # http://localhost:18888. Both auth modes are Unsecured for local dev, so there is no login token
+  # and the API can push without an API key (do NOT use this config outside local development).
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
+    container_name: appointmentscheduler-aspire-dashboard
+    environment:
+      DASHBOARD__FRONTEND__AUTHMODE: Unsecured   # no browser login token on the UI
+      DASHBOARD__OTLP__AUTHMODE: Unsecured        # accept OTLP without an API key
+    ports:
+      - "18888:18888"   # dashboard UI
+      - "4317:4317"     # OTLP/gRPC receiver (matches the API's default exporter endpoint)
+
 volumes:
   postgres-data:

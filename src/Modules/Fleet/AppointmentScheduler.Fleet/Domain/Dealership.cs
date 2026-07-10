@@ -10,23 +10,11 @@ public sealed class Dealership : Entity<Guid>, IAggregateRoot
     public string Name { get; private set; } = default!;
     public string Address { get; private set; } = default!;
 
-    public static Dealership Create(Guid id, string name, string address)
-    {
-        if (id == Guid.Empty)
+    public static Dealership Create(Guid id, string name, string address) =>
+        new()
         {
-            throw new ArgumentException("Id is required.", nameof(id));
-        }
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("A dealership must have a name.", nameof(name));
-        }
-
-        if (string.IsNullOrWhiteSpace(address))
-        {
-            throw new ArgumentException("A dealership must have an address.", nameof(address));
-        }
-
-        return new Dealership { Id = id, Name = name, Address = address };
-    }
+            Id = Guard.NotEmpty(id, nameof(id)),
+            Name = Guard.NotNullOrWhiteSpace(name, nameof(name), "A dealership must have a name."),
+            Address = Guard.NotNullOrWhiteSpace(address, nameof(address), "A dealership must have an address."),
+        };
 }

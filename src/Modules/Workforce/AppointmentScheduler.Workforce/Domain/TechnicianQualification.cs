@@ -1,3 +1,5 @@
+using AppointmentScheduler.BuildingBlocks.SharedKernel;
+
 namespace AppointmentScheduler.Workforce.Domain;
 
 /// <summary>
@@ -12,20 +14,12 @@ public sealed class TechnicianQualification
     public Guid TechnicianId { get; private set; }
     public Guid ServiceTypeId { get; private set; }
 
-    public static TechnicianQualification Create(Guid technicianId, Guid serviceTypeId)
-    {
-        if (technicianId == Guid.Empty)
+    public static TechnicianQualification Create(Guid technicianId, Guid serviceTypeId) =>
+        new()
         {
-            throw new ArgumentException("A qualification must reference a technician.", nameof(technicianId));
-        }
-
-        if (serviceTypeId == Guid.Empty)
-        {
-            throw new ArgumentException("A qualification must reference a service type.", nameof(serviceTypeId));
-        }
-
-        return new TechnicianQualification { TechnicianId = technicianId, ServiceTypeId = serviceTypeId };
-    }
+            TechnicianId = Guard.NotEmpty(technicianId, nameof(technicianId), "A qualification must reference a technician."),
+            ServiceTypeId = Guard.NotEmpty(serviceTypeId, nameof(serviceTypeId), "A qualification must reference a service type."),
+        };
 
     /// <summary>Domain rule: is this qualification for the given service type?</summary>
     public bool IsFor(Guid serviceTypeId) => ServiceTypeId == serviceTypeId;
