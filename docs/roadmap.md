@@ -40,7 +40,7 @@ Ordered by likely sequencing. Sequencing is guidance, not commitment.
 **What ships in this slice — three parts, none shippable alone:**
 
 1. **Outbox pattern implementation** per [`adrs/0002-events-for-inter-module-communication.md`](adrs/0002-events-for-inter-module-communication.md) — `IEventPublisher` port, `outbox` table written in the same DB transaction as `appointments`, post-commit dispatcher with retry and poison-queue behavior.
-2. **`AppointmentConfirmed` event + Booking handler modification** — the event record is defined in `Application/Features/Booking/Events/`, and the existing Booking handler is modified as part of this slice to publish it immediately after INSERT. The foundation slice ([`prds/appointment-booking.md`](prds/appointment-booking.md) AC-05) itself remains entirely event-free; event publishing is introduced *here*, not there.
+2. **Booking events + handler modification** — event records defined in `Application/Features/Booking/Events/`, and the Booking command handlers are modified as part of this slice to publish immediately after the state change commits. Since the Booking module now has three state-changing commands, this slice publishes **`AppointmentConfirmed`, `AppointmentCancelled`, and `AppointmentRescheduled`** — all three ride the one outbox (a cancel/reschedule handler enlists its event in the same transaction as the status/window update, exactly as booking does after INSERT). The foundation slice ([`prds/appointment-booking.md`](prds/appointment-booking.md) AC-05) itself remains entirely event-free; event publishing is introduced *here*, not there. Transport is an **in-process dispatcher first** (per [`adrs/0002`](adrs/0002-events-for-inter-module-communication.md)); **Kafka** is the intended external bus once a cross-service or analytics consumer needs a replayable stream (ADR-0004 notes the bus should be replay-capable — "Kafka-shaped, not RabbitMQ-shaped").
 3. **Notifications module + first `IEventHandler<AppointmentConfirmed>`** — subscriber that sends email / SMS confirmation to the customer.
 
 **Why the three are bundled** — none is independently verifiable. An outbox with no event to publish is unused infrastructure. An event record with no subscriber is dead code. A subscriber with no publisher is untestable. Landing all three together lets the first integration test assert the whole dual-write-safe path: booking commits → outbox row is written atomically → dispatcher picks it up post-commit → subscriber receives it → subscriber failure does not roll back the booking. That end-to-end assertion is the entire justification for building the outbox in the first place — deferring any of the three would waste the assertion.
@@ -78,6 +78,23 @@ Ordered by likely sequencing. Sequencing is guidance, not commitment.
 **Trigger to promote to PRD:** first non-trivial reporting requirement from an actual stakeholder, with the specific questions named. Committing to a design before the questions are known locks in the wrong shape.
 
 **Depends on:** enough live booking data to make reports meaningful — typically 1–3 months of production traffic.
+
+### 6. CQRS read-model evolution (Level 1 → 2 → 3)
+
+**What:** the deliberate ladder for how the *read* side evolves. Recorded here so the trigger for each rung is explicit and nobody climbs it "because CQRS."
+
+- **Level 1 — where we are.** Read side = query ports projecting slim DTOs (`BayInfo`, `TechnicianInfo`, …) **live** over the same normalized write tables (`.Select(...)`), one `AppDbContext`. Separate read model + read path, **no separate store, nothing to keep in sync, no staleness.** Command side = the `Appointment` aggregate. This is the current design and it is correct for today.
+- **Level 2 — denormalized, precomputed read table in the *same* database, kept in sync via events.** e.g. `booking.appointment_read` gathered from the outbox stream, so a heavy read becomes a cheap `SELECT`. Introduces eventual consistency on the read path.
+- **Level 3 — a separate read store** (read replica, or a different engine such as Elasticsearch for search), fed by events. ADR-0004 tier 2.
+
+**Triggers (note: each rung has its *own* trigger — climbing is not automatic):**
+
+- Level 2 is **not** triggered by "we now fire events." Events are only its **prerequisite** (delivered by §2). The trigger for Level 2 is a **measured read-performance or reporting need** — the same driver as §5 (Reporting). Absent that, staying at Level 1 is the right call (see the non-goal below).
+- Level 3 is **not** triggered by "we split into microservices." Extraction defaults to **tier-1 synchronous reads** ([`adrs/0004`](adrs/0004-inter-service-communication-strategy.md)); a separate read store is a *separate* decision gated on **measured scale or availability pressure on a specific read path**. Extraction itself is trigger-driven, not a goal (see the microservices non-goal below).
+
+**Trigger to promote to PRD:** a specific read path is demonstrably too slow / too coupled at Level 1 *and* the events from §2 exist to feed a projection. Name the query, measure it, then climb exactly one rung.
+
+**Depends on:** §2 (outbox + events) merged — both Level 2 and Level 3 are event-fed and cannot begin before the event stream exists. Read models are **always projections, never source of truth** ([`adrs/0003`](adrs/0003-appointment-as-scheduling-source-of-truth.md)).
 
 ## Explicit non-goals
 
