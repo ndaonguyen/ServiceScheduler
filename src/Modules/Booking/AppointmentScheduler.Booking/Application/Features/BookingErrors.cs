@@ -44,4 +44,17 @@ internal static class BookingErrors
 
     public static BookingError NoBayAvailable =>
         new("NO_BAY_AVAILABLE", 409, "No service bay is available at the dealership for the requested time.");
+
+    // Lifecycle failures for cancel / reschedule of an existing appointment.
+    public static BookingError AppointmentNotFound =>
+        new("APPOINTMENT_NOT_FOUND", 404, "The specified appointment does not exist.");
+
+    public static BookingError AppointmentNotOwned =>
+        new("APPOINTMENT_NOT_OWNED_BY_CALLER", 403, "The specified appointment is not owned by the caller.");
+
+    public static BookingError AppointmentAlreadyCancelled =>
+        new("APPOINTMENT_ALREADY_CANCELLED", 409, "The appointment is already cancelled.");
+
+    public static BookingError AppointmentInPast =>
+        new("APPOINTMENT_IN_PAST", 409, "A past or in-progress appointment cannot be changed.");
 }

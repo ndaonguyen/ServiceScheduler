@@ -27,6 +27,7 @@ internal sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appoin
         builder.Property(a => a.ScheduledEnd).HasColumnName("scheduled_end").IsRequired();
         builder.Property(a => a.Status).HasColumnName("status").HasConversion<string>().IsRequired();
         builder.Property(a => a.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(a => a.CancelledAt).HasColumnName("cancelled_at"); // null while confirmed
 
         // Plain indexes on the assigned-resource columns. The no-overlap EXCLUDE constraint is #6.
         builder.HasIndex(a => a.ServiceBayId);

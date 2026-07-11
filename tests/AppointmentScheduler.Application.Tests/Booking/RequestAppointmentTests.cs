@@ -410,17 +410,25 @@ public class RequestAppointmentTests
             return Task.CompletedTask;
         }
 
+        public Task<Appointment?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult(existing.FirstOrDefault(a => a.Id == id));
+
+        public Task UpdateAsync(Appointment appointment, CancellationToken ct = default) => Task.CompletedTask;
+
         public Task<BusyResources> GetBusyResourcesAsync(
             IReadOnlyCollection<Guid> candidateBayIds,
             IReadOnlyCollection<Guid> candidateTechnicianIds,
             DateTimeOffset start,
             DateTimeOffset end,
+            Guid? excludeAppointmentId = null,
             CancellationToken ct = default)
         {
             // Reuse the production overlap expression (compiled) so AT-10/AT-11 pin the real BR-03
             // rule, not a test-double reimplementation.
             var overlaps = AppointmentOverlap.Within(start, end).Compile();
-            var hits = existing.Where(a => a.Status == AppointmentStatus.Confirmed && overlaps(a)).ToList();
+            var hits = existing
+                .Where(a => a.Status == AppointmentStatus.Confirmed && a.Id != excludeAppointmentId && overlaps(a))
+                .ToList();
             return Task.FromResult(new BusyResources(
                 hits.Select(a => a.ServiceBayId).Where(candidateBayIds.Contains).ToHashSet(),
                 hits.Select(a => a.TechnicianId).Where(candidateTechnicianIds.Contains).ToHashSet()));
