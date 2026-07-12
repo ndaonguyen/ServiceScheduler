@@ -35,6 +35,19 @@ services:
       - "4318:4318"     # OTLP/HTTP receiver
     volumes:
       - observability-data:/data
+      # Dashboard-as-code: the JSON files under observability/dashboards/ and the provisioning
+      # config that tells Grafana to auto-load them. Committed to git so `docker compose down -v`
+      # + `up -d` recreates every dashboard from source. Mounted read-only; UI edits are disabled
+      # for provisioned dashboards (see dashboards.yaml → allowUiUpdates: false).
+      #
+      # NOTE: the grafana/otel-lgtm image uses a non-standard provisioning path
+      # (`/otel-lgtm/grafana/conf/provisioning/` per its `defaults.ini`), NOT the vanilla Grafana
+      # path `/etc/grafana/provisioning/`. We bind-mount our provider YAML as a single file
+      # alongside the image's built-in providers so the pre-shipped RED / JVM dashboards keep
+      # working. Dashboard JSONs themselves live at /etc/grafana/dashboards — an arbitrary path
+      # our YAML points to; no image-owned files there.
+      - ./observability/dashboards:/etc/grafana/dashboards:ro
+      - ./observability/provisioning/dashboards/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/appointmentscheduler.yaml:ro
 
 volumes:
   postgres-data:
