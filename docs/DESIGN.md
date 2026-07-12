@@ -47,7 +47,7 @@ flowchart TB
     end
 
     DB[("PostgreSQL<br/>schemas: booking · fleet<br/>workforce · catalog · identity")]
-    OTel[["Aspire dashboard / OTLP collector<br/>(:4317 → UI :18888)"]]
+    OTel[["Grafana LGTM stack<br/>OTLP :4317 · Grafana UI :3000<br/>Loki (logs) · Mimir (metrics)<br/>Tempo (traces)"]]
 
     Client -->|HTTPS + httpOnly cookies| Endpoints
     Endpoints --> Security
@@ -186,7 +186,7 @@ on startup, production runs migrations as a deliberate deploy step.
 | **Vertical-slice CQRS + tiny in-process mediator** | Each feature is one self-contained request/handler file; the mediator adds cross-cutting behavior (logging, and later validation/metrics) without a heavyweight dependency. No MediatR keeps the surface small and licensing-free. | — |
 | **FluentResults** | Business failures (`BookingError`) are values carrying a stable machine code + HTTP status — no exceptions for expected outcomes, and the endpoint needs no code→status mapping table. | — |
 | **JWT in httpOnly cookies + ASP.NET Core Identity** | Cookie transport is XSS-safe (tokens unreadable by JS) and, with `SameSite=Strict`, CSRF-safe without a separate token. Short-lived access token (15 min default) + rotating, reuse-detecting refresh token (**configured TTL, defaulting to 7 days from original login — not reset on rotation**). Identity gives a battle-tested user store, PBKDF2 hashing, RBAC, and lockout. | [authentication.md](authentication.md) |
-| **OpenTelemetry** | Vendor-neutral traces, metrics, and logs over OTLP — swap the backend (Aspire dashboard, Jaeger, Tempo, Prometheus, a SaaS) without code changes. | §5 |
+| **OpenTelemetry** | Vendor-neutral traces, metrics, and logs over OTLP — swap the backend (Grafana LGTM, Jaeger, Prometheus, a SaaS) without code changes. Backend-agnosticism is not theoretical here: the local stack was swapped from the .NET Aspire dashboard to Grafana LGTM with **only a `docker-compose.yml` edit** — zero application code touched. | §5 |
 | **xUnit + AwesomeAssertions + NetArchTest** | Unit tests for handlers, `WebApplicationFactory` integration tests over real HTTP, and architecture tests that make the design rules self-verifying. | [../tests](../tests) |
 
 ---
@@ -195,14 +195,19 @@ on startup, production runs migrations as a deliberate deploy step.
 
 Observability is wired in `Program.cs` and follows the three pillars, plus health probes.
 
-**Tracing.** OpenTelemetry with ASP.NET Core and `HttpClient` instrumentation, exported via **OTLP**
-(honours the standard `OTEL_EXPORTER_OTLP_*` env vars; endpoint defaults to `localhost:4317`). Every
-inbound request becomes a span; outbound calls (e.g. to a future extracted module) are child spans, so
-a request is traceable end-to-end. The resource is tagged with service name + assembly version.
+**Tracing.** OpenTelemetry with ASP.NET Core, `HttpClient`, **EF Core**, and **Npgsql** instrumentation,
+exported via **OTLP** (honours the standard `OTEL_EXPORTER_OTLP_*` env vars; endpoint defaults to
+`localhost:4317`). Every inbound request becomes a root span; EF Core emits a child span per LINQ query
+(with the rendered SQL on `db.query.text`, SemConv v1.29+); Npgsql adds driver-level command spans on
+top — so a single trace shows the endpoint, each of the handler's SQL statements, and the connection/
+command timing, all correlated end-to-end. Outbound HTTP (e.g. to a future extracted module) is
+similarly traced. The resource is tagged with service name + assembly version.
 
 **Metrics.** OpenTelemetry metrics from ASP.NET Core (request rate, duration, active requests),
-`HttpClient`, and the **.NET runtime** (GC, thread pool, allocations), exported over the same OTLP
-pipeline. This gives RED-style service metrics and runtime health with no bespoke instrumentation.
+`HttpClient`, the **.NET runtime** (GC pause, thread pool, allocations, working set), and **Npgsql**
+(connection-pool count, connection create time, per-command duration histograms) — exported over the
+same OTLP pipeline. RED-style service metrics + runtime saturation + database saturation, with no
+bespoke instrumentation.
 
 **Logging.** `ILogger` with **trace-context correlation**: `ActivityTrackingOptions.TraceId | SpanId`
 stamps every log line with the active trace/span id, so logs join up with traces. Logs are **also
@@ -212,18 +217,36 @@ other environments emit **structured JSON** (`AddJsonConsole`, scopes included) 
 mediator's `LoggingBehavior` logs every request name and its elapsed time (and exceptions with
 duration) — one consistent place for per-request timing across all slices.
 
-**Local viewing.** `docker-compose.yml` runs a **.NET Aspire dashboard** whose OTLP receiver is mapped
-to `localhost:4317`, so `docker compose up -d` + running the API surfaces all three signals — correlated
-— at `http://localhost:18888`, with no app configuration.
+**Local viewing.** `docker-compose.yml` runs the **Grafana LGTM all-in-one** container
+(`grafana/otel-lgtm` — Loki + Grafana + Tempo + Mimir + an OTel Collector) with OTLP receivers on
+`localhost:4317` / `4318`, so `docker compose up -d` + running the API surfaces all three signals —
+correlated — in Grafana at `http://localhost:3000` (default `admin/admin`). Datasources are
+pre-provisioned; from the sidebar Explore is one click away for PromQL against Mimir, TraceQL against
+Tempo, and LogQL against Loki. The `trace_id` derived-field wires log lines directly to their trace
+view, and traces link back to logs via the same id. State (dashboards + backends' TSDB/log/trace
+chunks) persists in the `observability-data` volume across container restarts.
+
+A **Golden Signals dashboard** (`AppointmentScheduler.Api — Golden Signals`, uid
+`app-golden-signals`) provides nine panels grouped in three rows: **RED** (request rate, 5xx error
+rate stat with threshold colouring, p95 latency by route), **runtime saturation** (active requests,
+GC pause rate, working set), and **database** (connection-pool depth vs. `max`, DB p95 query duration
+by SQL operation, DB QPS by operation). All queries key on a `service` templating variable populated
+from Prometheus so the dashboard scales to multiple services on the same OTLP endpoint.
 
 **Health checks.** Kubernetes-style split:
 - `GET /health/live` — liveness, no dependency checks (is the process up?).
 - `GET /health/ready` — readiness, pings the database via `AddDbContextCheck` (can we serve traffic?).
 - `GET /health` — liveness alias for existing probes.
 
-**What to add next:** a metrics/validation pipeline behavior for domain-level counters (e.g. bookings
-by outcome code), and business KPIs (conflict-retry rate, no-availability rate) exposed as OTel
-metrics.
+**What to add next:**
+- **Dashboard-as-code** — commit the Golden Signals dashboard JSON under `observability/dashboards/`
+  and mount that directory into the container so teammates get the dashboard on `docker compose up`,
+  not on a manual import.
+- A **metrics pipeline behavior** in the mediator for domain-level counters (bookings by outcome code,
+  reschedules per appointment) and business KPIs (conflict-retry rate, no-availability rate) exposed
+  as OTel metrics — complementing the runtime/DB metrics we already collect.
+- **Error/exception panels** on the dashboard (`aspnetcore.diagnostics.exceptions`,
+  `dotnet.exceptions`), and a **Loki panel** listing recent error-level log lines filtered by service.
 
 ---
 
@@ -272,5 +295,8 @@ the human reasoning so the "why" survives independent of the tool. Where docs an
   a future Notifications module needs it to email/SMS the customer. Today, none of those reactions
   have a channel — the only ways to add them would be a direct cross-module call (banned by the
   reference-graph rule) or the customer polling the API. That gap is what the outbox unblocks.
-- Appointment **lifecycle** is `Confirmed`-only; cancellation/rescheduling are future work.
+- Appointment **lifecycle** now covers `Confirmed` → `Cancelled` (soft cancel, one-way) plus
+  reschedule (re-runs availability + retry-once on race, keeping identity). Still missing:
+  `Completed` / `NoShow` terminal states, and a domain event on state transitions (blocked on the
+  outbox above).
 ```
