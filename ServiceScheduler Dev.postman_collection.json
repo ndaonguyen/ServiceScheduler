@@ -692,14 +692,20 @@
           "response": []
         },
         {
-          "name": "Cancel appointment (204)",
+          "name": "Cancel appointment (204 first / 409 after)",
           "event": [
             {
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 204', () => pm.response.to.have.status(204));",
-                  "pm.test('Body is empty', () => pm.expect(pm.response.text()).to.equal(''));"
+                  "pm.test('Status is 204 or 409', () => pm.expect([204, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 204) {",
+                  "  pm.test('First send: body is empty', () => pm.expect(pm.response.text()).to.equal(''));",
+                  "} else {",
+                  "  pm.test('Repeat send: code = APPOINTMENT_ALREADY_CANCELLED', () => {",
+                  "    pm.expect(pm.response.json().code).to.equal('APPOINTMENT_ALREADY_CANCELLED');",
+                  "  });",
+                  "}"
                 ]
               },
               "listen": "test"
@@ -719,7 +725,7 @@
                 "{{lastAppointmentId}}"
               ]
             },
-            "description": "Cancels the appointment captured by 'Book full service on Civic at D1'. Cancel is a soft state transition (Status = Cancelled), NOT a row delete — the row stays for history and simply drops out of the availability query and the partial EXCLUDE constraint. 204 No Content on success."
+            "description": "Cancels the appointment captured by 'Book full service on Civic at D1'. Cancel is a soft state transition (Status = Cancelled), NOT a row delete — the row stays for history and simply drops out of the availability query and the partial EXCLUDE constraint. First send → 204 No Content. Every send after that → 409 APPOINTMENT_ALREADY_CANCELLED (cancel is one-way, not idempotent), so re-sending in isolation without re-running Book is expected to return 409."
           },
           "response": []
         },
