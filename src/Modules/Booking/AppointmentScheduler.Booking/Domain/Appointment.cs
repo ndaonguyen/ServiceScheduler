@@ -36,6 +36,9 @@ public sealed class Appointment : Entity<Guid>, IAggregateRoot
     public AppointmentStatus Status { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
+    /// <summary>When the appointment was cancelled (UTC); <c>null</c> while it is confirmed.</summary>
+    public DateTimeOffset? CancelledAt { get; private set; }
+
     /// <summary>
     /// Books a new confirmed appointment. Enforces the aggregate invariants: every reference id is
     /// present, an owner is set, and the window is <c>[start, start + duration)</c> (BR-07 — the
@@ -75,5 +78,52 @@ public sealed class Appointment : Entity<Guid>, IAggregateRoot
             Status = AppointmentStatus.Confirmed,
             CreatedAt = createdAt,
         };
+    }
+
+    /// <summary>
+    /// Cancels the appointment — a soft state transition, never a delete. Enforces the lifecycle
+    /// rules: only a confirmed, not-yet-started appointment may be cancelled. Once cancelled the row
+    /// drops out of the partial <c>EXCLUDE</c> no-overlap constraint and the availability query
+    /// (both scoped to <see cref="AppointmentStatus.Confirmed"/>), so the slot frees itself.
+    /// </summary>
+    public void Cancel(DateTimeOffset now)
+    {
+        if (Status != AppointmentStatus.Confirmed)
+            throw new AppointmentAlreadyCancelledException(Id);
+        if (ScheduledStart <= now)
+            throw new AppointmentInPastException(Id);
+
+        Status = AppointmentStatus.Cancelled;
+        CancelledAt = now;
+    }
+
+    /// <summary>
+    /// Moves the appointment to a new window and (re)assigned bay/technician, keeping its identity and
+    /// <see cref="AppointmentStatus.Confirmed"/> status. The caller (handler) resolves which resources
+    /// are free for the new window; the aggregate enforces its invariants: the appointment must still
+    /// be confirmed and the target window must be strictly in the future. The window is
+    /// <c>[start, start + duration)</c> (BR-07 — duration comes from the service type). The database's
+    /// partial <c>EXCLUDE</c> constraint re-validates the mutated row against every <b>other</b>
+    /// confirmed appointment on commit (a row never conflicts with itself).
+    /// </summary>
+    public void RescheduleTo(
+        Guid serviceBayId,
+        Guid technicianId,
+        DateTimeOffset start,
+        TimeSpan duration,
+        DateTimeOffset now)
+    {
+        if (Status != AppointmentStatus.Confirmed)
+            throw new AppointmentAlreadyCancelledException(Id);
+        if (start <= now)
+            throw new AppointmentInPastException(Id);
+
+        // Building the value object validates the window (end > start) before we re-stamp it.
+        var slot = TimeSlot.FromDuration(start, duration);
+
+        ServiceBayId = Guard.NotEmpty(serviceBayId, nameof(serviceBayId));
+        TechnicianId = Guard.NotEmpty(technicianId, nameof(technicianId));
+        ScheduledStart = slot.Start;
+        ScheduledEnd = slot.End;
     }
 }

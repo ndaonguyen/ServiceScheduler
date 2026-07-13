@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Npgsql;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -122,11 +123,19 @@ builder.Services
     .WithTracing(tracing => tracing
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
+        // EF Core span per LINQ query. The 1.16+ instrumentation emits the rendered SQL as the
+        // `db.query.text` attribute by default (SemConv v1.29+); no explicit opt-in needed.
+        .AddEntityFrameworkCoreInstrumentation()
+        // Npgsql-level span for the driver's connection/command timing, complementing the EF span.
+        .AddNpgsql()
         .AddOtlpExporter())
     .WithMetrics(metrics => metrics
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
         .AddRuntimeInstrumentation()
+        // Npgsql's built-in Meter — connection-pool depth, command counts/timing, prepared-statement
+        // stats. Subscribing here is enough; no separate AddNpgsqlInstrumentation call is needed.
+        .AddMeter("Npgsql")
         .AddOtlpExporter())
     // Route the ILogger pipeline through OTLP too (survives the ClearProviders above, since it is
     // registered here). IncludeFormattedMessage keeps the rendered text; IncludeScopes carries scope

@@ -20,20 +20,35 @@ services:
       timeout: 5s
       retries: 5
 
-  # Observability backend: receives the API's OpenTelemetry traces + metrics over OTLP and renders
-  # them in a live UI. The API exports to http://localhost:4317 by default (Program.cs), which maps
-  # to this container's OTLP receiver below — no app config needed. Open the dashboard at
-  # http://localhost:18888. Both auth modes are Unsecured for local dev, so there is no login token
-  # and the API can push without an API key (do NOT use this config outside local development).
-  aspire-dashboard:
-    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
-    container_name: appointmentscheduler-aspire-dashboard
-    environment:
-      DASHBOARD__FRONTEND__AUTHMODE: Unsecured   # no browser login token on the UI
-      DASHBOARD__OTLP__AUTHMODE: Unsecured        # accept OTLP without an API key
+  # Observability backend: Grafana's all-in-one LGTM image (Loki + Grafana + Tempo + Mimir) with an
+  # OpenTelemetry Collector in front. Receives the API's OTLP traces + metrics + logs on 4317/4318
+  # and stores them in the bundled backends; datasources are pre-provisioned in Grafana so you can
+  # start building dashboards immediately at http://localhost:3000 (default login admin/admin).
+  # State (dashboards, TSDB blocks, log/trace chunks) persists in the observability-data volume.
+  # NOT for production — no auth on OTLP ingest, single-node, non-HA. Local dev only.
+  observability:
+    image: grafana/otel-lgtm:latest
+    container_name: appointmentscheduler-observability
     ports:
-      - "18888:18888"   # dashboard UI
+      - "3000:3000"     # Grafana UI
       - "4317:4317"     # OTLP/gRPC receiver (matches the API's default exporter endpoint)
+      - "4318:4318"     # OTLP/HTTP receiver
+    volumes:
+      - observability-data:/data
+      # Dashboard-as-code: the JSON files under observability/dashboards/ and the provisioning
+      # config that tells Grafana to auto-load them. Committed to git so `docker compose down -v`
+      # + `up -d` recreates every dashboard from source. Mounted read-only; UI edits are disabled
+      # for provisioned dashboards (see dashboards.yaml → allowUiUpdates: false).
+      #
+      # NOTE: the grafana/otel-lgtm image uses a non-standard provisioning path
+      # (`/otel-lgtm/grafana/conf/provisioning/` per its `defaults.ini`), NOT the vanilla Grafana
+      # path `/etc/grafana/provisioning/`. We bind-mount our provider YAML as a single file
+      # alongside the image's built-in providers so the pre-shipped RED / JVM dashboards keep
+      # working. Dashboard JSONs themselves live at /etc/grafana/dashboards — an arbitrary path
+      # our YAML points to; no image-owned files there.
+      - ./observability/dashboards:/etc/grafana/dashboards:ro
+      - ./observability/provisioning/dashboards/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/appointmentscheduler.yaml:ro
 
 volumes:
   postgres-data:
+  observability-data:

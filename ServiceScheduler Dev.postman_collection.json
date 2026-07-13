@@ -1,0 +1,1853 @@
+{
+  "info": {
+    "_postman_id": "f38df9e0-304e-43a3-9d6c-c75c65479b6c",
+    "name": "ServiceScheduler Dev",
+    "description": "Manual smoke-test suite for the Appointment Booking slice.\n\n- **Auth** — /api/auth/login, /register, /logout, /profile/me (cookie-based JWT).\n    \n- **Booking — Happy path** — POST /api/appointments with seeded data.\n    \n- **Booking — Issue #4 validation** — 5 error branches + 2 guard-order checks.\n    \n- **Booking — Conflict handling (#5/#6/#7)** — availability narrowing, half-open intervals, DB EXCLUDE constraint, graceful retry on race.\n    \n- **Auth boundary** — 401 without cookie.\n    \n\nRequires the 'ServiceScheduler Dev' environment (all seed GUIDs and dev credentials are stored there).\n\nConflict-handling tests use pre-request scripts to compute unique future times per run, so you do NOT need to TRUNCATE appointments between runs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "2327621"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login as customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('access_token cookie set', () => {",
+                  "  pm.expect(pm.cookies.has('access_token')).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login as admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 or 204', () => pm.expect([200, 204]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Profile - Who am I",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "profile",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register new user (200)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);",
+                  "pm.variables.set('register_email', `newuser-${suffix}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\":    \"{{register_email}}\",\n  \"password\": \"Passw0rd!$\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates a fresh account with the \"user\" role. Anonymous endpoint. Pre-request script generates a unique email per run so re-running does not hit \"email already taken\"."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh access token (200)",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 (did you login first?)', () => pm.response.to.have.status(200));",
+                  "pm.test('access_token cookie set', () => pm.expect(pm.cookies.has('access_token')).to.be.true);",
+                  "pm.test('refresh_token cookie set', () => pm.expect(pm.cookies.has('refresh_token')).to.be.true);"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Rotates the refresh-token cookie. Browser (and Postman with cookie jar enabled) only sends the refresh cookie to this exact path — it is scoped Path=/api/auth/refresh. Requires the refresh cookie from a prior successful Login. On success both cookies are re-issued; on any failure both are cleared and 401 is returned."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Booking - Happy path (random slots)",
+      "item": [
+        {
+          "name": "Book oil change (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Idempotent across runs: pick a random future day/hour so the DB doesn't accumulate collisions.",
+                  "const d = new Date();",
+                  "d.setUTCDate(d.getUTCDate() + 30 + Math.floor(Math.random() * 300));",
+                  "d.setUTCHours(6 + Math.floor(Math.random() * 4), 0, 0, 0);",
+                  "pm.variables.set('happy_oil_start', d.toISOString().replace(/\\.\\d{3}Z$/, 'Z'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('scheduledEnd = requestedStart + 45min', () => {",
+                  "  const start = new Date(body.scheduledStart);",
+                  "  const end = new Date(body.scheduledEnd);",
+                  "  pm.expect(end - start).to.equal(45 * 60 * 1000);",
+                  "});",
+                  "pm.test('Status field is Confirmed', () => pm.expect(body.status).to.equal('Confirmed'));",
+                  "pm.test('Technician Alex Chen assigned', () => pm.expect(body.technician.name).to.equal('Alex Chen'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"{{happy_oil_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Book tire rotation (201, different service)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date();",
+                  "d.setUTCDate(d.getUTCDate() + 30 + Math.floor(Math.random() * 300));",
+                  "d.setUTCHours(11 + Math.floor(Math.random() * 4), 0, 0, 0);",
+                  "pm.variables.set('happy_tire_start', d.toISOString().replace(/\\.\\d{3}Z$/, 'Z'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('scheduledEnd = requestedStart + 30min (tire rotation)', () => {",
+                  "  const start = new Date(body.scheduledStart);",
+                  "  const end = new Date(body.scheduledEnd);",
+                  "  pm.expect(end - start).to.equal(30 * 60 * 1000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{tireRotationId}}\",\n  \"requestedStart\":\"{{happy_tire_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Book brake inspection at D2 - Civic (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Idempotent across runs: random future day/hour, so DB collisions never accumulate.",
+                  "const d = new Date();",
+                  "d.setUTCDate(d.getUTCDate() + 30 + Math.floor(Math.random() * 300));",
+                  "d.setUTCHours(6 + Math.floor(Math.random() * 4), 0, 0, 0);",
+                  "pm.variables.set('happy_brake_start', d.toISOString().replace(/\\.\\d{3}Z$/, 'Z'));"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('scheduledEnd = start + 60min (brake inspection)', () => {",
+                  "  pm.expect(new Date(body.scheduledEnd) - new Date(body.scheduledStart)).to.equal(60 * 60 * 1000);",
+                  "});",
+                  "pm.test('Dealership is Shelbyville North', () => pm.expect(body.dealership.name).to.equal('Shelbyville North'));",
+                  "pm.test('Emily Davis assigned (only D2 tech qualified for brakes)', () => pm.expect(body.technician.name).to.equal('Emily Davis'));"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{civicId}}\",\n  \"dealershipId\":  \"{{dealership2Id}}\",\n  \"serviceTypeId\": \"{{brakeInspectionId}}\",\n  \"requestedStart\":\"{{happy_brake_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Exercises the newly-seeded second dealership (Shelbyville North), the Civic, and the Brake inspection service type. Emily Davis is the only D2 technician qualified for brakes, so the handler must pick her."
+          },
+          "response": []
+        },
+        {
+          "name": "Book wheel alignment on F-150 at D1 (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date();",
+                  "d.setUTCDate(d.getUTCDate() + 30 + Math.floor(Math.random() * 300));",
+                  "d.setUTCHours(15 + Math.floor(Math.random() * 2), 0, 0, 0);",
+                  "pm.variables.set('happy_alignment_start', d.toISOString().replace(/\\.\\d{3}Z$/, 'Z'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('scheduledEnd = start + 90min (wheel alignment)', () => {",
+                  "  pm.expect(new Date(body.scheduledEnd) - new Date(body.scheduledStart)).to.equal(90 * 60 * 1000);",
+                  "});",
+                  "pm.test('Vehicle is the F-150', () => pm.expect(body.vehicle.id).to.equal(pm.environment.get('f150Id')));",
+                  "pm.test('Dealership is Springfield Downtown', () => pm.expect(body.dealership.name).to.equal('Springfield Downtown'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{f150Id}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{wheelAlignmentId}}\",\n  \"requestedStart\":\"{{happy_alignment_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Exercises the F-150 and the Wheel alignment service type (90 min). At D1 both Sam and Maria are qualified for alignment, so Sam (first candidate at D1) is expected."
+          },
+          "response": []
+        },
+        {
+          "name": "Book full service on Civic at D1 (201, captures lastAppointmentId)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Fixed 09:00 UTC on a random future day. Also persisted as a collection variable so the",
+                  "// Reschedule below can compute a new time relative to it.",
+                  "const d = new Date();",
+                  "d.setUTCDate(d.getUTCDate() + 30 + Math.floor(Math.random() * 300));",
+                  "d.setUTCHours(9, 0, 0, 0);",
+                  "pm.collectionVariables.set('happy_fullservice_start', d.toISOString().replace(/\\.\\d{3}Z$/, 'Z'));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('scheduledEnd = start + 120min (full service)', () => {",
+                  "  pm.expect(new Date(body.scheduledEnd) - new Date(body.scheduledStart)).to.equal(120 * 60 * 1000);",
+                  "});",
+                  "pm.test('Maria Garcia assigned (only D1 tech qualified for full service)', () => pm.expect(body.technician.name).to.equal('Maria Garcia'));",
+                  "// Capture the id so Reschedule / Cancel below can act on it.",
+                  "pm.collectionVariables.set('lastAppointmentId', body.appointmentId);",
+                  "console.log('Captured lastAppointmentId =', body.appointmentId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{civicId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{fullServiceId}}\",\n  \"requestedStart\":\"{{happy_fullservice_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Exercises the Full service type (120 min). At D1 only Maria is qualified for full service. The test script captures body.appointmentId into the collection variable {{lastAppointmentId}} so the Reschedule and Cancel requests below can operate on it — run this before them (Runner order in this folder does this automatically)."
+          },
+          "response": []
+        },
+        {
+          "name": "Reschedule appointment (200)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Pick a new time 7 days after the original booking (still 09:00 UTC).",
+                  "const original = pm.collectionVariables.get('happy_fullservice_start');",
+                  "if (!original) {",
+                  "  throw new Error('happy_fullservice_start not set. Run \"Book full service on Civic at D1\" first.');",
+                  "}",
+                  "const d = new Date(original);",
+                  "d.setUTCDate(d.getUTCDate() + 7);",
+                  "pm.collectionVariables.set('reschedule_new_start', d.toISOString().replace(/\\.\\d{3}Z$/, 'Z'));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('scheduledStart moved to the new time', () => {",
+                  "  pm.expect(new Date(body.scheduledStart).toISOString()).to.equal(new Date(pm.collectionVariables.get('reschedule_new_start')).toISOString());",
+                  "});",
+                  "pm.test('scheduledEnd = new start + 120min (duration re-derived, BR-07)', () => {",
+                  "  pm.expect(new Date(body.scheduledEnd) - new Date(body.scheduledStart)).to.equal(120 * 60 * 1000);",
+                  "});",
+                  "pm.test('Status stays Confirmed', () => pm.expect(body.status).to.equal('Confirmed'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"newStart\": \"{{reschedule_new_start}}\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{lastAppointmentId}}/reschedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{lastAppointmentId}}",
+                "reschedule"
+              ]
+            },
+            "description": "Uses {{lastAppointmentId}} captured by 'Book full service on Civic at D1' above. Shifts the appointment 7 days later at the same 09:00 UTC — availability query re-runs, Maria should still be free, so 200 with the new scheduledStart."
+          },
+          "response": []
+        },
+        {
+          "name": "Reschedule to past (409 APPOINTMENT_IN_PAST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code=APPOINTMENT_IN_PAST', () => pm.expect(pm.response.json().code).to.equal('APPOINTMENT_IN_PAST'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"newStart\": \"2020-01-01T09:00:00Z\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{lastAppointmentId}}/reschedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{lastAppointmentId}}",
+                "reschedule"
+              ]
+            },
+            "description": "Reschedule refuses a past newStart. Unlike RequestAppointment (400 REQUESTED_START_IN_PAST), the reschedule handler returns 409 APPOINTMENT_IN_PAST — this is a lifecycle guard for an already-created appointment, not request validation."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel appointment (204)",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Body is empty', () => pm.expect(pm.response.text()).to.equal(''));"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{lastAppointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{lastAppointmentId}}"
+              ]
+            },
+            "description": "Cancels the appointment captured by 'Book full service on Civic at D1'. Cancel is a soft state transition (Status = Cancelled), NOT a row delete — the row stays for history and simply drops out of the availability query and the partial EXCLUDE constraint. 204 No Content on success."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel again (409 APPOINTMENT_ALREADY_CANCELLED)",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code=APPOINTMENT_ALREADY_CANCELLED', () => pm.expect(pm.response.json().code).to.equal('APPOINTMENT_ALREADY_CANCELLED'));"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{lastAppointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{lastAppointmentId}}"
+              ]
+            },
+            "description": "Second cancel on the same {{lastAppointmentId}} — the aggregate's Cancel() throws AppointmentAlreadyCancelledException which the handler maps to 409 APPOINTMENT_ALREADY_CANCELLED. Idempotent no-op is NOT the design here; cancellation is a one-way state transition and a repeat is a caller error."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel non-existent id (404 APPOINTMENT_NOT_FOUND)",
+          "event": [
+            {
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code=APPOINTMENT_NOT_FOUND', () => pm.expect(pm.response.json().code).to.equal('APPOINTMENT_NOT_FOUND'));"
+                ],
+                "type": "text/javascript"
+              },
+              "listen": "test"
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/44444444-4444-4444-4444-444444444444",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "44444444-4444-4444-4444-444444444444"
+              ]
+            },
+            "description": "Cancel handler's not-found guard: no row with the id — 404 APPOINTMENT_NOT_FOUND. This must fire BEFORE the ownership check so the API doesn't leak whether an id exists to non-owners."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Booking - Happy path (fixed slots)",
+      "item": [
+        {
+          "name": "Book oil change (201 first / 409 after)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 or 409', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('First send: 45min duration', () => {",
+                  "    pm.expect(new Date(body.scheduledEnd) - new Date(body.scheduledStart)).to.equal(45 * 60 * 1000);",
+                  "  });",
+                  "  pm.test('First send: Alex Chen assigned', () => pm.expect(body.technician.name).to.equal('Alex Chen'));",
+                  "  console.log('First send OK, appointmentId =', body.appointmentId);",
+                  "} else {",
+                  "  pm.test('Repeat send: code is a conflict (NO_QUALIFIED_TECHNICIAN or NO_BAY_AVAILABLE)', () => {",
+                  "    pm.expect(['NO_QUALIFIED_TECHNICIAN', 'NO_BAY_AVAILABLE']).to.include(pm.response.json().code);",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"2027-01-15T08:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Fixed slot: 2027-01-15 08:00 UTC. First Send = 201 (Alex Chen assigned). Every Send after that = 409 NO_QUALIFIED_TECHNICIAN because Alex is now booked at that time and Sam is the only other qualified tech but will be busy after the second attempt too. The test accepts both status codes and asserts the appropriate response body for each."
+          },
+          "response": []
+        },
+        {
+          "name": "Book brake inspection at D2 - Civic (201 first / 409 after)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 or 409', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('First send: 60min duration (brake inspection)', () => {",
+                  "    pm.expect(new Date(body.scheduledEnd) - new Date(body.scheduledStart)).to.equal(60 * 60 * 1000);",
+                  "  });",
+                  "  pm.test('First send: Emily Davis assigned', () => pm.expect(body.technician.name).to.equal('Emily Davis'));",
+                  "} else {",
+                  "  pm.test('Repeat send: code = NO_QUALIFIED_TECHNICIAN (Emily is the only D2 brake tech)', () => {",
+                  "    pm.expect(pm.response.json().code).to.equal('NO_QUALIFIED_TECHNICIAN');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{civicId}}\",\n  \"dealershipId\":  \"{{dealership2Id}}\",\n  \"serviceTypeId\": \"{{brakeInspectionId}}\",\n  \"requestedStart\":\"2027-01-15T09:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Fixed slot: 2027-01-15 09:00 UTC. Emily Davis is the ONLY D2 technician qualified for brakes, so the second Send immediately returns 409 NO_QUALIFIED_TECHNICIAN — no fallback candidate."
+          },
+          "response": []
+        },
+        {
+          "name": "Book full service on Civic at D1 (201 first / 409 after, captures lastAppointmentIdFixed)",
+          "event": [
+            {
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 or 409', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('First send: 120min duration (full service)', () => {",
+                  "    pm.expect(new Date(body.scheduledEnd) - new Date(body.scheduledStart)).to.equal(120 * 60 * 1000);",
+                  "  });",
+                  "  pm.test('First send: Maria Garcia assigned', () => pm.expect(body.technician.name).to.equal('Maria Garcia'));",
+                  "  pm.collectionVariables.set('lastAppointmentIdFixed', body.appointmentId);",
+                  "  console.log('Captured lastAppointmentIdFixed =', body.appointmentId);",
+                  "} else {",
+                  "  pm.test('Repeat send: code = NO_QUALIFIED_TECHNICIAN (Maria is the only D1 full-service tech)', () => {",
+                  "    pm.expect(pm.response.json().code).to.equal('NO_QUALIFIED_TECHNICIAN');",
+                  "  });",
+                  "}"
+                ]
+              },
+              "listen": "test"
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{civicId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{fullServiceId}}\",\n  \"requestedStart\":\"2027-01-15T10:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Fixed slot: 2027-01-15 10:00 UTC. Maria Garcia is the ONLY D1 tech qualified for full service, so second Send = 409. On success, captures the id into {{lastAppointmentIdFixed}} for the Reschedule and Cancel requests below to use — note: distinct from the {{lastAppointmentId}} used by the random-slots folder, so both folders can coexist."
+          },
+          "response": []
+        },
+        {
+          "name": "Reschedule appointment to fixed target (200 first / 409 after cancel)",
+          "event": [
+            {
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 409', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('scheduledStart is the fixed target', () => {",
+                  "    pm.expect(new Date(body.scheduledStart).toISOString()).to.equal('2027-01-22T10:00:00.000Z');",
+                  "  });",
+                  "  pm.test('scheduledEnd = start + 120min (BR-07: duration re-derived from service)', () => {",
+                  "    pm.expect(new Date(body.scheduledEnd) - new Date(body.scheduledStart)).to.equal(120 * 60 * 1000);",
+                  "  });",
+                  "} else {",
+                  "  pm.test('Repeat send: code = APPOINTMENT_ALREADY_CANCELLED (appointment was cancelled)', () => {",
+                  "    pm.expect(pm.response.json().code).to.equal('APPOINTMENT_ALREADY_CANCELLED');",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              },
+              "listen": "test"
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"newStart\": \"2027-01-22T10:00:00Z\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{lastAppointmentIdFixed}}/reschedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{lastAppointmentIdFixed}}",
+                "reschedule"
+              ]
+            },
+            "description": "Requires 'Book full service on Civic at D1' to have succeeded (captured {{lastAppointmentIdFixed}}). Moves the appointment to 2027-01-22 10:00 UTC. Send once → 200 (moved). Send twice → still 200 (moving to same time is idempotent). But if 'Cancel' runs between sends, this returns 409 APPOINTMENT_ALREADY_CANCELLED — reschedule requires Confirmed status."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel appointment (204 first / 409 after)",
+          "event": [
+            {
+              "script": {
+                "exec": [
+                  "pm.test('Status is 204 or 409', () => pm.expect([204, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 204) {",
+                  "  pm.test('First send: body is empty', () => pm.expect(pm.response.text()).to.equal(''));",
+                  "} else {",
+                  "  pm.test('Repeat send: code = APPOINTMENT_ALREADY_CANCELLED', () => {",
+                  "    pm.expect(pm.response.json().code).to.equal('APPOINTMENT_ALREADY_CANCELLED');",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              },
+              "listen": "test"
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments/{{lastAppointmentIdFixed}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "{{lastAppointmentIdFixed}}"
+              ]
+            },
+            "description": "Requires 'Book full service on Civic at D1' to have captured {{lastAppointmentIdFixed}}. First Send → 204 (soft cancel: Status → Cancelled). Every Send after that → 409 APPOINTMENT_ALREADY_CANCELLED because cancel is a one-way state transition, not idempotent."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Booking - Issue #4 validation",
+      "item": [
+        {
+          "name": "404 SERVICE_TYPE_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code=SERVICE_TYPE_NOT_FOUND', () => pm.expect(pm.response.json().code).to.equal('SERVICE_TYPE_NOT_FOUND'));",
+                  "pm.test('message is non-empty', () => pm.expect(pm.response.json().message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"11111111-1111-1111-1111-111111111111\",\n  \"requestedStart\":\"2026-08-01T09:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "400 REQUESTED_START_IN_PAST",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code=REQUESTED_START_IN_PAST', () => pm.expect(pm.response.json().code).to.equal('REQUESTED_START_IN_PAST'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"2020-01-01T09:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "404 DEALERSHIP_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code=DEALERSHIP_NOT_FOUND', () => pm.expect(pm.response.json().code).to.equal('DEALERSHIP_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"22222222-2222-2222-2222-222222222222\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"2026-08-01T09:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "404 VEHICLE_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code=VEHICLE_NOT_FOUND', () => pm.expect(pm.response.json().code).to.equal('VEHICLE_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"33333333-3333-3333-3333-333333333333\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"2026-08-01T09:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "403 VEHICLE_NOT_OWNED_BY_CALLER (log in as admin first)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403 (did you log in as admin first?)', () => pm.response.to.have.status(403));",
+                  "pm.test('code=VEHICLE_NOT_OWNED_BY_CALLER', () => pm.expect(pm.response.json().code).to.equal('VEHICLE_NOT_OWNED_BY_CALLER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"2026-08-01T09:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Prerequisite: run 'Auth / Login as admin' first. Otherwise cookie is still the customer's and this returns 201."
+          },
+          "response": []
+        },
+        {
+          "name": "Guard order: past + bad dealership -> 400 (past wins)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code=REQUESTED_START_IN_PAST (not DEALERSHIP_NOT_FOUND)', () => pm.expect(pm.response.json().code).to.equal('REQUESTED_START_IN_PAST'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"22222222-2222-2222-2222-222222222222\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"2020-01-01T09:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Both requestedStart (past) and dealershipId (unknown) are invalid. Handler checks requestedStart BEFORE dealership, so 400 REQUESTED_START_IN_PAST wins."
+          },
+          "response": []
+        },
+        {
+          "name": "Guard order: bad service + bad dealership -> 404 SERVICE_TYPE_NOT_FOUND (service wins)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code=SERVICE_TYPE_NOT_FOUND', () => pm.expect(pm.response.json().code).to.equal('SERVICE_TYPE_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"22222222-2222-2222-2222-222222222222\",\n  \"serviceTypeId\": \"11111111-1111-1111-1111-111111111111\",\n  \"requestedStart\":\"2026-08-01T09:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Booking - Conflict handling (#5/#6/#7)",
+      "item": [
+        {
+          "name": "AT-10 Setup: book oil at 08:00 (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Random future day, this pair uses 08:00 + 08:45 on it.",
+                  "const d = new Date();",
+                  "d.setUTCDate(d.getUTCDate() + 30 + Math.floor(Math.random() * 300));",
+                  "d.setUTCHours(8, 0, 0, 0);",
+                  "const start = d.toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+                  "const adjacent = new Date(d.getTime() + 45 * 60 * 1000).toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+                  "pm.collectionVariables.set('at10_start', start);",
+                  "pm.collectionVariables.set('at10_adjacent_start', adjacent);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('scheduledEnd = start + 45min', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(new Date(b.scheduledEnd) - new Date(b.scheduledStart)).to.equal(45*60*1000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"{{at10_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "First booking of the AT-10 pair (BR-03 half-open interval). Sets a random future day at 08:00 UTC, then the follow-up 'Adjacent' request books the very next 45-minute slot (08:45) on the SAME day — which must be allowed because the intervals only touch, they don't overlap."
+          },
+          "response": []
+        },
+        {
+          "name": "AT-10 Adjacent: book oil at 08:45 same day (201, half-open BR-03)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 (adjacent slots do not overlap, BR-03)', () => pm.response.to.have.status(201));",
+                  "pm.test('Alex assigned again (only qualified tech)', () => pm.expect(pm.response.json().technician.name).to.equal('Alex Chen'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"{{at10_adjacent_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Second booking of the AT-10 pair. Starts EXACTLY when the previous one ended (08:45 = 08:00 + 45min oil-change duration). Half-open interval `[08:00, 08:45)` does NOT include 08:45, so this is allowed — expect 201."
+          },
+          "response": []
+        },
+        {
+          "name": "AT-11 Setup: book oil at 10:00 (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date();",
+                  "d.setUTCDate(d.getUTCDate() + 30 + Math.floor(Math.random() * 300));",
+                  "d.setUTCHours(10, 0, 0, 0);",
+                  "const start = d.toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+                  "const overlap = new Date(d.getTime() + 30 * 60 * 1000).toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+                  "pm.collectionVariables.set('at11_start', start);",
+                  "pm.collectionVariables.set('at11_overlap_start', overlap);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"{{at11_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "First booking of the AT-11 pair. Books 10:00-10:45. Follow-up 'Overlap' tries 10:30-11:15 which overlaps by 15 minutes -> must fail 409."
+          },
+          "response": []
+        },
+        {
+          "name": "AT-11 Overlap: book oil at 10:30 same day (409, overlaps)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409 (overlap detected by #5)', () => pm.response.to.have.status(409));",
+                  "pm.test('code=NO_QUALIFIED_TECHNICIAN (Alex is the only qualified tech and he is busy)', () => pm.expect(pm.response.json().code).to.equal('NO_QUALIFIED_TECHNICIAN'));",
+                  "pm.test('NOT 500 - handler returned graceful 409', () => pm.expect(pm.response.code).to.not.equal(500));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"{{at11_overlap_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Overlaps [10:30, 11:15) with the previous booking's [10:00, 10:45). #5's availability narrowing sees Alex is busy 10:00-10:45 and short-circuits with 409 BEFORE attempting INSERT."
+          },
+          "response": []
+        },
+        {
+          "name": "AT-08 Setup: book oil at 12:00 (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date();",
+                  "d.setUTCDate(d.getUTCDate() + 30 + Math.floor(Math.random() * 300));",
+                  "d.setUTCHours(12, 0, 0, 0);",
+                  "const start = d.toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+                  "pm.collectionVariables.set('at08_start', start);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"{{at08_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "First booking of the AT-08 pair. Follow-up 'Duplicate' books the EXACT SAME slot -> #5's narrowing sees Alex busy -> 409."
+          },
+          "response": []
+        },
+        {
+          "name": "AT-08 Duplicate: book oil at 12:00 again (409 NO_QUALIFIED_TECHNICIAN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code=NO_QUALIFIED_TECHNICIAN', () => pm.expect(pm.response.json().code).to.equal('NO_QUALIFIED_TECHNICIAN'));",
+                  "pm.test('NOT 500 - never surface the raw exclusion violation to the client', () => pm.expect(pm.response.code).to.not.equal(500));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"{{at08_start}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Exact-same-slot duplicate. Handler's #5 narrowing catches this BEFORE INSERT -> 409. If you ever saw a 500 here in the past, that was #6's EXCLUDE constraint firing without #7's retry catching it. With #5 in place, the sequential path never reaches the constraint."
+          },
+          "response": []
+        },
+        {
+          "name": "#7 Race: fire two concurrent same-time bookings (never 500)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Compute a fresh future slot at 14:00 UTC.",
+                  "const d = new Date();",
+                  "d.setUTCDate(d.getUTCDate() + 30 + Math.floor(Math.random() * 300));",
+                  "d.setUTCHours(14, 0, 0, 0);",
+                  "const start = d.toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+                  "",
+                  "const body = JSON.stringify({",
+                  "  vehicleId:      pm.environment.get('vehicleId'),",
+                  "  dealershipId:   pm.environment.get('dealershipId'),",
+                  "  serviceTypeId:  pm.environment.get('oilChangeId'),",
+                  "  requestedStart: start",
+                  "});",
+                  "",
+                  "const opts = {",
+                  "  url: pm.environment.get('baseUrl') + '/api/appointments',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: body }",
+                  "};",
+                  "",
+                  "// Fire two in parallel and collect results.",
+                  "const p1 = new Promise(r => pm.sendRequest(opts, (_e, res) => r({ code: res && res.code, text: res && res.text() })));",
+                  "const p2 = new Promise(r => pm.sendRequest(opts, (_e, res) => r({ code: res && res.code, text: res && res.text() })));",
+                  "",
+                  "return Promise.all([p1, p2]).then(([r1, r2]) => {",
+                  "  pm.collectionVariables.set('race_status_1', String(r1.code));",
+                  "  pm.collectionVariables.set('race_status_2', String(r2.code));",
+                  "  pm.collectionVariables.set('race_body_1', r1.text);",
+                  "  pm.collectionVariables.set('race_body_2', r2.text);",
+                  "  console.log('Race results:', r1.code, r2.code);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s1 = parseInt(pm.collectionVariables.get('race_status_1'), 10);",
+                  "const s2 = parseInt(pm.collectionVariables.get('race_status_2'), 10);",
+                  "const codes = [s1, s2].sort();",
+                  "console.log('Race outcome codes:', codes);",
+                  "",
+                  "pm.test(`Neither request returned 500 (got ${s1} + ${s2})`, () => {",
+                  "  pm.expect(s1).to.not.equal(500);",
+                  "  pm.expect(s2).to.not.equal(500);",
+                  "});",
+                  "",
+                  "pm.test('Not both 201 (constraint would have failed to prevent double-book)', () => {",
+                  "  pm.expect([s1, s2].filter(c => c === 201).length).to.be.lessThan(2);",
+                  "});",
+                  "",
+                  "pm.test(`Outcome is 201 + 409 (got ${s1} + ${s2})`, () => {",
+                  "  pm.expect(codes).to.deep.equal([201, 409]);",
+                  "});",
+                  "",
+                  "// The dummy top-level request (OpenAPI GET) is expected to be 200 - not part of the assertion.",
+                  "pm.test('Dummy OpenAPI GET returned 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/openapi/v1.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "openapi",
+                "v1.json"
+              ]
+            },
+            "description": "Bypasses this request itself (hits OpenAPI as a no-op) - the real work is in the pre-request script, which fires TWO simultaneous /api/appointments POSTs via pm.sendRequest. This is the only way from Postman to exercise the true race that #7 catches: both requests pass #5's availability check together, both attempt INSERT, one hits the EXCLUDE constraint, and #7 retries. Expected outcome: one 201 + one 409. Never a 500. Never two 201s (would mean the constraint failed)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Verifies availability computation (#5), DB EXCLUDE constraint (#6), and graceful retry on race (#7).\n\n**How the tests avoid DB collisions between runs:**\nEach paired test's pre-request script generates a UNIQUE random future date, so re-running the folder does not require truncating the appointments table.\n\n**Pair sequencing matters** — run each 'Setup' request before its follow-up ('Adjacent', 'Overlap', 'Duplicate'). Postman Runner does this automatically when you run the whole folder.\n\n**With seeded data** (1 dealership, 2 bays, 1 technician Alex Chen qualified for both service types):\n- The 409 is `NO_QUALIFIED_TECHNICIAN` because Alex is the only qualified tech — he runs out before bays do.\n- The `#7 race` request fires two truly concurrent bookings via `pm.sendRequest` — the second must be 409 (or 201 on the retry path), never 500."
+    },
+    {
+      "name": "Auth boundary",
+      "item": [
+        {
+          "name": "401 - no cookie (disable cookie jar in Settings tab)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 (did you disable cookie jar?)', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\":     \"{{vehicleId}}\",\n  \"dealershipId\":  \"{{dealershipId}}\",\n  \"serviceTypeId\": \"{{oilChangeId}}\",\n  \"requestedStart\":\"2026-08-01T09:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "Set Postman to skip cookies for this request: Settings tab (per-request) -> tick 'Disable cookie jar'. Then send. Expect 401 (empty body). If you get 201, cookies are still being attached from the jar."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "happy_fullservice_start",
+      "value": ""
+    },
+    {
+      "key": "lastAppointmentId",
+      "value": ""
+    },
+    {
+      "key": "reschedule_new_start",
+      "value": ""
+    }
+  ]
+}

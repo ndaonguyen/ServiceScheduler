@@ -82,7 +82,7 @@ internal sealed class RequestAppointmentHandler(
         var candidateBayIds = dealership.Bays.Select(b => b.Id).ToList();
         var candidateTechnicianIds = technicians.Select(t => t.Id).ToList();
         var busy = await appointments.GetBusyResourcesAsync(
-            candidateBayIds, candidateTechnicianIds, start, end, cancellationToken);
+            candidateBayIds, candidateTechnicianIds, start, end, ct: cancellationToken);
 
         // Technician first, then bay (PRD §8/§10 order). Keep the whole ordered free list of each so a
         // race loss on insert (#6 EXCLUDE constraint) can retry with the next free candidate.

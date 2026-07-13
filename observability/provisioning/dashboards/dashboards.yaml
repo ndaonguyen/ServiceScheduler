@@ -1,0 +1,19 @@
+# Grafana dashboard provisioning — auto-loads every *.json in /etc/grafana/dashboards
+# on container start. See docker-compose.yml for the mount that ties this to
+# observability/dashboards/ in the repo. `updateIntervalSeconds` re-reads the folder
+# so edits to a JSON file (via git pull) become live without a container restart.
+# `allowUiUpdates: false` makes the UI read-only for provisioned dashboards — the
+# repo is the source of truth.
+apiVersion: 1
+
+providers:
+  - name: 'AppointmentScheduler dashboards'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false
