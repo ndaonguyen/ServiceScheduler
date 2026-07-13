@@ -13,28 +13,22 @@ available for the full duration of the service.
 
 ## Solution
 
-A single backend endpoint lets an authenticated customer request an appointment for one of their
-vehicles at a chosen dealership and service type at a desired start time. The system atomically
-checks bay + qualified-technician availability at that dealership for the full service duration
-and, if both exist, persists a confirmed `Appointment` linking customer, vehicle, dealership,
-bay, and technician. If no combination is available, the request is rejected with a
-machine-readable reason.
-
-This is the first vertical slice built on the modular-monolith skeleton described in
-[ADR-0001](../adrs/0001-modular-monolith.md) and
-[ADR-0002](../adrs/0002-events-for-inter-module-communication.md). It stands up the **Booking**,
-**Fleet**, **Workforce**, and **Catalog** modules.
+A signed-in customer can request an appointment for one of their vehicles at a chosen dealership
+and service type at a desired start time. The system checks — in real time — whether a bay and a
+qualified technician are both free at that dealership for the full length of the service. If yes,
+it confirms the booking immediately, assigning a specific bay and technician. If no, it rejects
+the request with a clear reason the customer can act on (e.g. "no bay available").
 
 ## 1. Assumptions
 
 | ID | Assumption |
 |---|---|
-| AS-01 | Customer authentication is provided by the existing JWT + cookie stack. The caller's user id is resolved from `ICurrentUser` — never taken from the request body. |
-| AS-02 | Vehicle ownership is maintained by the Fleet module (`Vehicle.OwnerId` → `AppUser.Id`). This slice consumes ownership; it does not model a separate `Customer` aggregate. |
-| AS-03 | A technician's calendar consists only of confirmed appointments in this system. External schedule sources (vacation, PTO, other systems) are out of scope. |
-| AS-04 | Service duration is fixed per `ServiceType`. Variable-duration jobs are out of scope. |
-| AS-05 | All times are stored and processed in UTC end-to-end. Time-zone conversion for display is a client concern. |
-| AS-06 | The availability check runs **synchronously inside the booking request** — the caller receives a definitive 201 / 4xx / 409 within the same HTTP response, not a pending acknowledgement followed by a later notification. This is dictated by the originating scenario's **"Real-Time Availability Check"** requirement and the resulting UX (browsers or client apps expect immediate outcome). Async choreography / saga patterns for this flow were considered and explicitly rejected — see [ADR-0004](../adrs/0004-inter-service-communication-strategy.md). Revisit only if the "Real-Time" product constraint is lifted or if a multi-step workflow (e.g. payment) requires a saga around this call. |
+| AS-01 | The customer is signed in. Their identity is taken from their session, never from the request itself — a customer can't book on someone else's behalf by supplying another user's id. |
+| AS-02 | Vehicles are already linked to their owner elsewhere in the product. Booking consumes that ownership; it doesn't introduce a separate customer profile. |
+| AS-03 | A technician is considered busy only when they have another confirmed appointment in this system. Vacation, PTO, and external calendars are out of scope. |
+| AS-04 | Every service type has a fixed duration (e.g. "Oil change = 45 minutes"). Variable-length jobs are out of scope. |
+| AS-05 | All appointment times are stored in UTC. Showing them in the customer's local time zone is the client app's job. |
+| AS-06 | The customer gets a definitive answer — confirmed or rejected — in the same request. No "we'll get back to you" acknowledgements followed by later notifications. This is a hard product requirement: the customer experience assumes an immediate outcome. |
 
 ## 2. User Stories
 
@@ -46,7 +40,7 @@ This is the first vertical slice built on the modular-monolith skeleton describe
 | US-02 | As a customer, I want the system to auto-assign an available service bay, so that I don't need to know which bays exist. |
 | US-03 | As a customer, I want the system to auto-assign a qualified technician, so that I don't need to know who works there. |
 | US-04 | As a customer, I want a confirmed appointment record with the assigned bay, technician, start, and end, so that I know exactly what was booked. |
-| US-05 | As a customer, I want a clear, machine-readable failure reason when the request cannot be fulfilled, so that I can retry or adjust. |
+| US-05 | As a customer, I want a clear reason when a request can't be fulfilled, so that I can retry or adjust. |
 | US-06 | As a customer with multiple vehicles, I want each booking to apply to exactly the vehicle I specify, so that I can manage per-vehicle service history. |
 | US-07 | As a customer, I want to book at any dealership (not just a home dealership), so that I can get service wherever I currently am. |
 
@@ -58,224 +52,142 @@ This is the first vertical slice built on the modular-monolith skeleton describe
 | US-09 | As a dealership, I want the same service bay never assigned to overlapping appointments, so that physical resources aren't double-booked. |
 | US-10 | As a dealership, I want only technicians who hold the required skill assigned to a service type, so that customers always get a qualified technician. |
 
-## 3. Functional Requirements
+## 3. What the System Must Do
 
-| ID | Requirement |
+| ID | Behaviour |
 |---|---|
-| FR-01 | The system exposes `POST /api/appointments` accepting `{ vehicleId, dealershipId, serviceTypeId, requestedStart }`. |
-| FR-02 | The handler resolves the owner from `ICurrentUser`; the owner id is never taken from the request body. |
-| FR-03 | The handler computes `scheduledEnd = requestedStart + ServiceType.Duration`. |
-| FR-04 | The handler auto-selects one service bay at the requested dealership that is free for `[scheduledStart, scheduledEnd)`. |
-| FR-05 | The handler auto-selects one technician at the requested dealership qualified for the service type and free for `[scheduledStart, scheduledEnd)`. |
-| FR-06 | On success, the handler persists a `Confirmed` appointment linking owner, vehicle, dealership, bay, technician, start, and end atomically, and returns 201 with the appointment details. |
-| FR-07 | On failure, the handler returns an error response with a stable machine-readable code (see §8 API Contract). |
-| FR-08 | The Development environment auto-seeds a small fixed set of dealerships, bays, technicians (with qualifications), service types, and customer-owned vehicles so the flow is exercisable end-to-end without any management endpoints. |
+| FR-01 | Let a signed-in customer submit a booking request specifying: which vehicle, which dealership, which service type, and when they'd like it to start. |
+| FR-02 | Always identify the customer from their signed-in session — never trust a customer id supplied in the request. |
+| FR-03 | Work out the appointment's end time from the service type's fixed duration. The customer doesn't get to override the length. |
+| FR-04 | Automatically pick one service bay at that dealership that's free for the full window. |
+| FR-05 | Automatically pick one technician at that dealership who is qualified for that service type and free for the full window. |
+| FR-06 | On success, create a confirmed appointment linking the customer, vehicle, dealership, bay, technician, start, and end — and immediately return the confirmation with those details. |
+| FR-07 | On failure, return a clear, stable reason the client app can display to the customer (e.g. "no bay available"). |
+| FR-08 | Ship the dev environment with a small starter set of dealerships, bays, technicians (with their skills), service types, and customer-owned vehicles, so the flow can be tried out end-to-end without any admin tooling. |
 
 ## 4. Business Rules
 
 | ID | Rule |
 |---|---|
-| BR-01 | A technician cannot have overlapping confirmed appointments. |
-| BR-02 | A service bay cannot have overlapping confirmed appointments. |
-| BR-03 | Overlap uses half-open intervals: an appointment ending at time T does not conflict with one starting at time T on the same resource. |
-| BR-04 | A technician can only be assigned to a service type they are qualified for (recorded in `TechnicianQualification`). |
+| BR-01 | A technician cannot have two confirmed appointments that overlap in time. |
+| BR-02 | A service bay cannot have two confirmed appointments that overlap in time. |
+| BR-03 | Appointments that touch but don't overlap are fine. If one ends at 3:00pm and the next starts at 3:00pm on the same bay or technician, that is _not_ a conflict. |
+| BR-04 | A technician can only be assigned to a service type they are qualified for. |
 | BR-05 | A service bay can only be assigned to appointments at the dealership it belongs to. |
-| BR-06 | A technician can only be assigned to appointments at the dealership they are employed at. |
-| BR-07 | Appointment duration is determined by the referenced `ServiceType`, never by client input. |
+| BR-06 | A technician can only be assigned to appointments at the dealership they work at. |
+| BR-07 | Appointment duration always comes from the service type. Any duration in the customer's request is ignored. |
 
 ## 5. Validation Rules
 
-| ID | Rule | Response |
-|---|---|---|
-| VR-01 | Request must come from an authenticated caller. | 401 Unauthorized |
-| VR-02 | Vehicle must exist. | 404 `VEHICLE_NOT_FOUND` |
-| VR-03 | Vehicle must be owned by the authenticated caller. | 403 `VEHICLE_NOT_OWNED_BY_CALLER` |
-| VR-04 | Dealership must exist. | 404 `DEALERSHIP_NOT_FOUND` |
-| VR-05 | Service type must exist. | 404 `SERVICE_TYPE_NOT_FOUND` |
-| VR-06 | `requestedStart` must be strictly greater than the current UTC time. | 400 `REQUESTED_START_IN_PAST` |
+Each row is a reason a booking request will be rejected outright, along with what the customer sees.
 
-## 6. Non-functional Requirements
+| ID | Rule | Customer sees |
+|---|---|---|
+| VR-01 | The request must come from a signed-in customer. | "You need to sign in." |
+| VR-02 | The chosen vehicle must exist. | "We couldn't find that vehicle." |
+| VR-03 | The chosen vehicle must belong to the signed-in customer. | "That vehicle isn't yours." |
+| VR-04 | The chosen dealership must exist. | "We couldn't find that dealership." |
+| VR-05 | The chosen service type must exist. | "We couldn't find that service." |
+| VR-06 | The requested start time must be in the future. | "The start time has to be in the future." |
+
+## 6. Quality Requirements
 
 | ID | Requirement |
 |---|---|
-| NFR-01 | The double-booking guarantee (BR-01, BR-02) holds even when multiple API instances process overlapping requests concurrently — enforced at the database level (see AC-03), not application code. |
-| NFR-02 | Authentication uses the existing JWT + cookie stack; no new auth mechanism is introduced. |
+| NFR-01 | The no-double-booking guarantee (BR-01, BR-02) must hold even under heavy concurrent load — e.g. two customers submitting requests for the same bay in the same second. This is a correctness requirement, not a best-effort one. |
+| NFR-02 | Booking reuses the existing sign-in mechanism. No new sign-in flow is introduced. |
 
-## 7. Architectural Constraints
+## 7. What the Customer Sees
 
-| ID | Constraint |
+**Success (booking confirmed):**
+The customer receives a confirmation containing:
+- The dealership name
+- The service type name and its duration
+- The specific service bay assigned (e.g. "Bay 3")
+- The specific technician assigned (name)
+- The confirmed start and end times
+- Status: **Confirmed**
+
+**Failure (booking rejected):**
+The customer receives a short, stable reason. The client app maps each reason to a message. The possible reasons in this slice are:
+
+| Reason | Meaning |
 |---|---|
-| AC-01 | Booking communicates with Fleet, Workforce, and Catalog only through read-only query ports defined in `Application/Abstractions/`, per ADR-0001. |
-| AC-02 | Time-window / availability logic lives entirely inside the Booking module against its own `Appointment` data. Fleet, Workforce, and Catalog hold no calendar concept. |
-| AC-03 | The no-overlap guarantee is enforced by PostgreSQL `EXCLUDE USING gist` constraints on `(service_bay_id, tstzrange(...))` and `(technician_id, tstzrange(...))` filtered by `WHERE status = 'Confirmed'`, so future non-confirmed statuses (e.g. cancelled) won't require altering the constraint. Requires the `btree_gist` extension. |
-| AC-04 | Cross-module references are stored as opaque IDs. No module `using`s another module's `Domain` or `Infrastructure` types, per ADR-0001. |
-| AC-05 | This slice publishes no domain events. `IEventPublisher` / outbox / dispatcher machinery from ADR-0002 is deferred until a consumer exists. |
-| AC-06 | The test seam for this slice is **unit tests only** in `AppointmentScheduler.Application.Tests`. Integration tests via `WebApplicationFactory` are out of scope. |
-| AC-07 | The Development environment includes seeded reference data via the existing `DbInitializer` extension point. |
+| Start time in the past | The requested start time is not in the future. |
+| Vehicle not found | The vehicle id doesn't exist. |
+| Vehicle not yours | The vehicle exists but belongs to a different customer. |
+| Dealership not found | The dealership id doesn't exist. |
+| Service type not found | The service type id doesn't exist. |
+| No qualified technician | Either no technician at that dealership can do that service, or every qualified technician is already booked in that window. |
+| No bay available | Every bay at that dealership is already booked in that window. |
 
-## 8. API Contract
+## 8. How the Flow Works (plain-language walkthrough)
 
-**Endpoint:** `POST /api/appointments`
-**Auth:** any authenticated caller (`.RequireAuthorization()`); access token from the `access_token` HttpOnly cookie.
-**Route group:** `Endpoints/BookingEndpoints.cs` in the Api project.
+1. The customer submits a booking request: vehicle, dealership, service type, desired start time.
+2. The system identifies the customer from their session.
+3. The system looks up the service type's duration and works out when the appointment would end.
+4. The system checks the start time is in the future — otherwise rejects.
+5. The system confirms the vehicle exists and belongs to this customer — otherwise rejects.
+6. The system confirms the dealership exists — otherwise rejects.
+7. The system fetches the list of technicians at that dealership who are qualified for that service — if the list is empty, rejects with "no qualified technician".
+8. The system checks which of that dealership's bays and which of those qualified technicians are free for the full window.
+9. If at least one bay _and_ one qualified technician are free, the system picks one of each and creates a confirmed appointment. The confirmation is returned immediately.
+10. If nothing is free, the system rejects with either "no bay available" or "no qualified technician", whichever applies.
 
-### Request
+## 9. What the System Tracks (conceptual)
 
-```json
-{
-  "vehicleId": "5b0a…",
-  "dealershipId": "0e1c…",
-  "serviceTypeId": "8f21…",
-  "requestedStart": "2026-07-08T14:30:00Z"
-}
-```
+To support the flow above, the product tracks the following concepts. Attributes are shown at a product level, not a database level.
 
-### 201 Created (success)
+- **Appointment** — Who the customer is, which vehicle, which dealership, which service type, which bay was assigned, which technician was assigned, when it starts, when it ends, and whether it's confirmed.
+- **Vehicle** — Its owner, plus identifying details (make, model, year, VIN).
+- **Dealership** — Its name and address.
+- **Service Bay** — Which dealership it belongs to, and a label (e.g. "Bay 3").
+- **Technician** — Which dealership they work at, and their name.
+- **Technician Qualification** — Which service types a technician is allowed to perform.
+- **Service Type** — Its name and fixed duration.
 
-```json
-{
-  "appointmentId": "0f4e…",
-  "dealership":   { "id": "0e1c…", "name": "Springfield Downtown" },
-  "serviceType":  { "id": "8f21…", "name": "Oil change", "durationMinutes": 45 },
-  "vehicle":      { "id": "5b0a…" },
-  "serviceBay":   { "id": "9d31…", "label": "Bay 3" },
-  "technician":   { "id": "aa87…", "name": "Alex Chen" },
-  "scheduledStart": "2026-07-08T14:30:00Z",
-  "scheduledEnd":   "2026-07-08T15:15:00Z",
-  "status": "Confirmed"
-}
-```
+## 10. Acceptance Criteria
 
-### Error responses
-
-All error responses use the shape `{ "code": "<STABLE_CODE>", "message": "<human-readable>" }`.
-
-| HTTP | `code` | Cause |
-|---|---|---|
-| 400 | `REQUESTED_START_IN_PAST` | VR-06 |
-| 401 | *(no body — auth pipeline)* | VR-01 |
-| 403 | `VEHICLE_NOT_OWNED_BY_CALLER` | VR-03 |
-| 404 | `VEHICLE_NOT_FOUND` | VR-02 |
-| 404 | `DEALERSHIP_NOT_FOUND` | VR-04 |
-| 404 | `SERVICE_TYPE_NOT_FOUND` | VR-05 |
-| 409 | `NO_QUALIFIED_TECHNICIAN` | No technician qualified for the service type is available at the dealership (either none qualified or all busy for the window) |
-| 409 | `NO_BAY_AVAILABLE` | All bays at the dealership are busy for the window |
-
-## 9. Domain Model
-
-Per ADR-0001, each aggregate lives inside exactly one module.
-
-**Booking module** — owns time-based scheduling.
-- `Appointment`: `Id`, `OwnerId` (AppUser.Id, string), `VehicleId`, `DealershipId`, `ServiceTypeId`, `ServiceBayId`, `TechnicianId`, `ScheduledStart` (UTC), `ScheduledEnd` (UTC), `Status` (currently only `Confirmed`), `CreatedAt`.
-
-**Fleet module** — owns physical resources and vehicle ownership.
-- `Vehicle`: `Id`, `OwnerId` (AppUser.Id, string), `Make`, `Model`, `Year`, `Vin`.
-- `Dealership`: `Id`, `Name`, `Address`.
-- `ServiceBay`: `Id`, `DealershipId`, `Label`.
-
-**Workforce module** — owns technicians and their skills.
-- `Technician`: `Id`, `DealershipId`, `Name`.
-- `TechnicianQualification`: `TechnicianId`, `ServiceTypeId` (opaque per AC-04).
-
-**Catalog module** — owns service-type definitions.
-- `ServiceType`: `Id`, `Name`, `Duration` (TimeSpan).
-
-**Query ports** consumed by Booking (in `Application/Abstractions/`, implemented in the owning module's Infrastructure):
-
-| Port | Owner module | Input → Output |
-|---|---|---|
-| `IServiceTypeLookup.GetAsync` | Catalog | serviceTypeId → duration \| not-found |
-| `IServiceBayLookup.ListByDealershipAsync` | Fleet | dealershipId → bayIds \| dealership-not-found |
-| `IVehicleOwnershipQuery.CheckAsync` | Fleet | (vehicleId, ownerId) → owned \| not-owned \| not-found |
-| `IQualifiedTechnicianLookup.ListAsync` | Workforce | (dealershipId, serviceTypeId) → technicianIds |
-
-## 10. Sequence Diagram
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Customer
-    participant API as POST /api/appointments
-    participant BH as Booking.CreateAppointmentHandler
-    participant CAT as Catalog port
-    participant FLE as Fleet ports
-    participant WFC as Workforce port
-    participant DB as PostgreSQL (Booking schema)
-
-    Customer->>API: { vehicleId, dealershipId, serviceTypeId, requestedStart }
-    API->>BH: Send(CreateAppointment) with ICurrentUser.UserId
-    BH->>CAT: GetAsync(serviceTypeId)
-    CAT-->>BH: Duration (or 404 SERVICE_TYPE_NOT_FOUND)
-    BH-->>BH: Reject if requestedStart in the past (400)
-    BH->>FLE: ListByDealershipAsync(dealershipId)
-    FLE-->>BH: bayIds (or 404 DEALERSHIP_NOT_FOUND)
-    BH->>FLE: CheckAsync(vehicleId, callerId)
-    FLE-->>BH: owned | 403 NOT_OWNED | 404 NOT_FOUND
-    BH->>WFC: ListAsync(dealershipId, serviceTypeId)
-    WFC-->>BH: technicianIds (empty → 409 NO_QUALIFIED_TECHNICIAN)
-    BH->>DB: SELECT overlapping appointments for candidate bays + techs
-    DB-->>BH: busy sets
-    BH-->>BH: Narrow to free bay + free tech (else 409)
-    BH->>DB: INSERT appointment (final race guard = EXCLUDE constraint)
-    DB-->>BH: OK | ExclusionViolation → retry once with next candidate
-    BH-->>API: 201 { appointmentId, ... }
-    API-->>Customer: 201 Created
-```
-
-## 11. Acceptance Criteria
-
-Each row maps directly to a handler unit test (see §Testing Notes).
+Each row is a scenario the product must handle correctly.
 
 | ID | Given | When | Then |
 |---|---|---|---|
-| AT-01 | Vehicle exists and is owned by caller; dealership exists; service type exists; requestedStart is in the future; ≥ 1 bay and ≥ 1 qualified tech at the dealership are free for the window | Customer POSTs the booking request | 201 Created; appointment persisted; assigned bay + technician returned; `scheduledEnd = requestedStart + ServiceType.Duration` |
-| AT-02 | Vehicle id unknown | Booking request | 404 `VEHICLE_NOT_FOUND` |
-| AT-03 | Vehicle exists but is owned by a different customer | Booking request | 403 `VEHICLE_NOT_OWNED_BY_CALLER` |
-| AT-04 | Dealership id unknown | Booking request | 404 `DEALERSHIP_NOT_FOUND` |
-| AT-05 | Service type id unknown | Booking request | 404 `SERVICE_TYPE_NOT_FOUND` |
-| AT-06 | `requestedStart` in the past | Booking request | 400 `REQUESTED_START_IN_PAST` |
-| AT-07 | Caller is unauthenticated (no valid access cookie) | Booking request | 401 (no body) |
-| AT-08 | No technician qualified for the service type is available at the dealership (either none qualified or all busy for the window) | Booking request | 409 `NO_QUALIFIED_TECHNICIAN` |
-| AT-09 | All bays at the dealership are busy for the requested window | Booking request | 409 `NO_BAY_AVAILABLE` |
-| AT-10 (BR-03) | An existing confirmed appointment ends at T; new request starts at T on the same bay/tech | Booking request | 201 Created (half-open, not overlap) |
-| AT-11 (BR-03) | An existing confirmed appointment covers [T, T+D); new request covers [T−1s, T+1s) on the same bay | Booking request | 409 `NO_BAY_AVAILABLE` |
-| AT-12 (BR-05/06) | Only one bay/tech at the requested dealership is free; another dealership has ample free resources | Booking request | 201 Created assigns the requested-dealership resource; other dealership's resources are never candidates |
-| AT-13 (BR-07) | ServiceType.Duration = 45 min; requestedStart = T | Booking request | `scheduledEnd = T + 45 min` (any client-supplied duration is ignored — the contract doesn't accept one) |
-
-## Testing Notes
-
-- Seam: **unit tests only** in `AppointmentScheduler.Application.Tests` (xUnit + AwesomeAssertions), against fake implementations of the four query ports and a fake `IAppointmentRepository`. Assertions target the handler's external contract (status/response type, what was persisted through the fake repository) — not private helpers or internal call order.
-- AT-01 through AT-06 and AT-08 through AT-13 map 1:1 to handler unit tests. AT-10/AT-11 pin BR-03. AT-12 pins BR-05/BR-06. AT-13 pins BR-07.
-- AT-07 (unauthenticated caller → 401) is **not** a handler unit test: `.RequireAuthorization()` rejects the request in the ASP.NET Core pipeline before `ISender.Send()` is ever invoked, so the handler never observes an unauthenticated call. AT-07 is satisfied structurally by reusing that existing mechanism — already exercised end-to-end for other endpoints by `AuthEndpointsTests` — and is not re-verified by a new test in this slice.
-- The `EXCLUDE USING gist` constraint (AC-03) is schema, not handler logic — not exercisable through a handler unit test with fake repositories. Verification is explicitly deferred to a future PRD that introduces an `Api.Tests` integration seam (real Postgres via Testcontainers or similar).
-- No new tests exist in `AppointmentScheduler.Api.Tests` for this slice.
+| AT-01 | The vehicle exists and belongs to the customer; the dealership and service type exist; the requested start is in the future; at least one bay and one qualified technician at that dealership are free for the window | The customer submits the booking | Booking is confirmed; a specific bay and technician are assigned; the end time is the start time plus the service type's duration |
+| AT-02 | The vehicle id is unknown | The customer submits the booking | Rejected: "vehicle not found" |
+| AT-03 | The vehicle exists but belongs to a different customer | The customer submits the booking | Rejected: "vehicle not yours" |
+| AT-04 | The dealership id is unknown | The customer submits the booking | Rejected: "dealership not found" |
+| AT-05 | The service type id is unknown | The customer submits the booking | Rejected: "service type not found" |
+| AT-06 | The requested start time is in the past | The customer submits the booking | Rejected: "start time in the past" |
+| AT-07 | The customer is not signed in | The customer submits the booking | Rejected: "you need to sign in" |
+| AT-08 | No technician at the dealership can perform this service, OR every qualified technician is busy for the requested window | The customer submits the booking | Rejected: "no qualified technician" |
+| AT-09 | Every bay at the dealership is busy for the requested window | The customer submits the booking | Rejected: "no bay available" |
+| AT-10 (pins BR-03) | An existing confirmed appointment ends at 3:00pm; the new request starts at 3:00pm on the same bay and technician | The customer submits the booking | Confirmed (back-to-back is fine, not an overlap) |
+| AT-11 (pins BR-03) | An existing confirmed appointment covers 3:00pm–3:45pm on a bay; the new request is 2:59:59pm–3:00:01pm on the same bay | The customer submits the booking | Rejected: "no bay available" |
+| AT-12 (pins BR-05/06) | Only one bay/technician at the chosen dealership is free; a different dealership has plenty of free resources | The customer submits the booking | Confirmed, using the chosen dealership's resource. Other dealerships' resources are never considered. |
+| AT-13 (pins BR-07) | The chosen service type is 45 minutes long; the customer requests a start at 2:00pm | The customer submits the booking | The confirmed end time is 2:45pm — even if the customer's request contained a different duration, it's ignored |
 
 ## Future Work
 
-Slice-level follow-ups directly triggered or enabled by this PRD. Product-direction items (Notifications, Audit, Billing, Reporting, and other anticipated modules) live in [`../roadmap.md`](../roadmap.md), not here.
+Follow-ups directly triggered or enabled by this slice. Broader product direction (Notifications, Audit, Billing, Reporting, etc.) lives in [`../roadmap.md`](../roadmap.md), not here. These are planned — just not now.
 
-Distinct from Out of Scope: these are planned, just not now.
-
-| Item | Trigger |
+| Item | When it becomes relevant |
 |---|---|
-| **Implement the Outbox Pattern for cross-module domain events.** Introduces the `IEventPublisher` port (Application), a post-commit `outbox` table written inside the same transaction as the aggregate, and a dispatcher (in-process first, swappable for a message bus later) per [ADR-0002](../adrs/0002-events-for-inter-module-communication.md). This is a committed future deliverable, not a maybe — the ADR already decides the pattern; only the timing is deferred. | The first PRD that introduces a cross-module event consumer — expected to be the **Notifications** module (see [`../roadmap.md`](../roadmap.md)) reacting to `AppointmentConfirmed`. Outbox lands with that consumer in the same slice so the dual-write-safe path can be verified end-to-end against a real subscriber — building the outbox before a consumer exists would be speculative infrastructure with no assertable behavior. |
-| Integration-test seam in `AppointmentScheduler.Api.Tests` (real Postgres via Testcontainers or similar). | The first PRD that requires verifying database-level behavior not reachable from a handler unit test — starting with the `EXCLUDE USING gist` no-overlap guarantee (AC-03 / NFR-01), which currently ships without automated verification. |
-| Architecture tests (NetArchTest or equivalent) enforcing ADR-0001 module boundaries at build time. | Follows the second module going live (ADR-0001's own "add architecture tests once >2 modules exist" note). This slice introduces four modules at once, so the trigger is effectively "next slice after this one merges." |
+| Notify other parts of the product when an appointment is confirmed (e.g. so a future Notifications module can email the customer). | When the first consumer of "appointment confirmed" events exists — expected to be the Notifications module on the roadmap. |
+| Add a stronger test harness that verifies the no-double-booking guarantee under real database conditions. | When we need to prove concurrent double-booking is prevented end-to-end, not only in isolated logic tests. |
+| Add build-time checks that keep modules isolated from each other as the codebase grows. | Once a second module is under active development. |
 
 ## Out of Scope
 
 Items this PRD deliberately does **not** cover and has no committed plan to add.
 
-- Management / CRUD endpoints for `Vehicle`, `Dealership`, `ServiceBay`, `Technician`, `TechnicianQualification`, `ServiceType` (created via seeded data only).
-- A separate `Customer` profile aggregate — ownership is `Vehicle.OwnerId` only.
-- Cancelling, rescheduling, or listing/viewing appointments (this slice creates only).
-- Letting the customer pick a specific bay or technician (always auto-assigned).
-- Rate limiting / anti-abuse controls on the booking endpoint.
-- Time-zone conversion for display (all times UTC end-to-end).
+- Admin tooling to create or edit vehicles, dealerships, bays, technicians, qualifications, or service types (created via seeded starter data only in this slice).
+- A separate customer profile — the customer is just the vehicle's owner.
+- Cancelling, rescheduling, viewing, or listing appointments. This slice only creates them.
+- Letting the customer pick a specific bay or technician. Bay and technician are always chosen for them.
+- Rate limiting or anti-abuse controls on the booking endpoint.
+- Displaying times in the customer's local time zone. All times are UTC end-to-end; local display is a client-app concern.
 
 ## Further Notes
 
-- "Domain: Ownership" from the originating scenario maps to the **Fleet** module in ADR-0001's terminology. `Fleet` is broader than typical usage here (it also owns `Dealership` and `ServiceBay`). A rename to `Ownership` or a split into `Vehicles` + `Facilities` may be revisited if a real commercial-fleet-management concept ever emerges.
-- Wide blast radius: this PRD introduces four modules at once — unavoidable, since a booking can't be exercised end-to-end without vehicles, bays, technicians, and service types existing first, and no prior PRD created them.
-- The migration that creates the `appointments` table must first run `CREATE EXTENSION IF NOT EXISTS btree_gist;` before creating the `EXCLUDE USING gist` constraints.
+- Wide blast radius: this slice introduces four areas of the product (booking, vehicles/dealerships/bays, technicians/qualifications, service types) at once. That's unavoidable — a booking can't be exercised end-to-end without all four existing first, and no prior slice created them.
 - No GitHub issue exists yet. Rename this file to `<issue-number>-appointment-booking.md` when one is created.

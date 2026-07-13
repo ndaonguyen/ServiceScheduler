@@ -132,10 +132,15 @@ It's a companion to the `curl` smoke test above — use it for interactive, repe
 
 1. Start the stack and seed the dev database: `docker compose up -d` then
    `dotnet run --project src/Host/AppointmentScheduler.Api` (Development auto-migrates and seeds).
-2. In **Postman desktop** (the web client needs the desktop agent to reach `localhost`), choose
-   **Import** and select the collection file, plus the **`ServiceScheduler Dev` environment** file —
-   the collection is driven entirely by environment variables (`baseUrl`, the dev credentials, and
-   the seed GUIDs), so it does nothing without that environment.
+2. **Import both files into Postman desktop** (the web client needs the desktop agent to reach
+   `localhost`). Click **Import** (top-left) and select — or drag in — these two files from the repo
+   root:
+   - `ServiceScheduler Dev.postman_collection.json` — the requests (auth, booking, reschedule/cancel).
+   - `ServiceScheduler Dev.postman_environment.json` — the environment (`baseUrl`, dev credentials,
+     seed GUIDs).
+
+   Import **both**: the collection is driven entirely by the environment variables, so it does nothing
+   without the environment.
 3. Select **ServiceScheduler Dev** in the environment dropdown (top-right). Confirm `baseUrl` matches
    where the API is listening (`http://localhost:5080` by default).
 
