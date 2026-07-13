@@ -222,6 +222,86 @@ The LGTM stack is **local-dev only** — no auth on OTLP ingest, single-node, no
 Health checks: `/health/live` (liveness), `/health/ready` (readiness, checks the database),
 `/health` (liveness alias).
 
+## AI Collaboration Narrative
+
+I built this project with **Claude (Anthropic)** as a collaborator across the whole lifecycle, but I
+stayed the decision-maker and treated **automated checks as the objective backstop** — no AI output
+was accepted on trust. The detailed design-phase account is in
+[`system_design/DESIGN.md` §5](system_design/DESIGN.md#5-how-generative-ai-assisted-the-design-phase);
+this section describes how I guided the AI, how I verified its output, and how I kept the final code
+honest.
+
+### High-level strategy for guiding the AI
+
+I ran the work as a **staged pipeline**, where each stage is a **dedicated AI skill I invoke with a
+slash command**. Every stage has a focused prompt, a defined input/output, and a clean hand-off to
+the next — so the AI is always working against an agreed artifact instead of improvising:
+
+```
+ADR → PRD → Issues → Plan → Implement (TDD) → Review
+```
+
+**I match the model to the stakes of each stage** — the upstream stages shape everything downstream,
+so they get the strongest model and my closest review; the mechanical stages run a cheaper model:
+
+| Stage | Skill (slash command) | Model | My attention |
+|-------|----------------------|-------|--------------|
+| **ADR** | design / ADR skill | strongest | high |
+| **PRD** | `/to-prd` | **strongest** | **highest — I review this very carefully** |
+| **Plan** | `/plan-issue` | **strongest** | **highest — I review this very carefully** |
+| **Issues** | `/to-issues` | medium | normal |
+| **Implement (TDD)** | `/implement-issue` (drives TDD itself), `/tdd` | medium | normal |
+| **Review** | `/code-review` | medium, run by a **separate AI / fresh context window** | independent pass |
+
+Two deliberate choices sit behind that table:
+
+- **PRD and Plan are where I invest the most.** An error there is cheapest to catch and most
+  expensive to let through, so those two stages get the strongest model *and* a careful manual review
+  before anything downstream is generated from them. Once the plan is solid, the mechanical stages
+  (issues, implementation) can safely run a medium model. The `/implement-issue` skill **drives TDD
+  itself** — it works through the plan section by section red-green-refactor, so implementation and
+  test-first are the same stage, not two.
+- **Review is run by a different AI — or an empty context window.** The reviewer must not be biased
+  by the same context that produced the code, so I give the review stage a fresh context (and it's
+  fine on a medium model) to get a genuinely independent read.
+
+Two more principles keep the AI honest throughout:
+
+- **Small, vertical slices.** Features were scoped one request/handler at a time (vertical-slice
+  CQRS), keeping each AI-generated change small enough to review and test in isolation.
+- **The architecture is executable, not advisory.** Boundary rules are encoded as a **NetArchTest**
+  suite + the `ProjectReference` graph, so a violation *fails the build* instead of relying on review
+  discipline.
+
+### Verifying and refining the AI's output
+
+- **Every change is gated by the toolchain.** Before a change was committed it had to pass the
+  compiler with **warnings-as-errors**, the architecture tests, and the full unit/integration suites.
+- **Test-first on the core logic.** Business rules are pinned by tests (each `RequestAppointment`
+  case maps to a numbered acceptance/business rule, e.g. `AT-08 / BR-01`), so a failing test names
+  the rule it broke and refactors stay honest.
+- **The dedicated review stage is the refinement loop.** `/code-review` on a fresh context surfaced
+  real issues — duplicated guard clauses (consolidated into a shared `Guard` helper), an unclassified
+  domain type, and documentation describing an events/outbox system not yet in code — which fed
+  straight back into fixes and the roadmap.
+- **Dialogue to sharpen the hard parts.** The concurrency strategy ("read availability → let Postgres
+  arbitrate via `EXCLUDE` constraints → retry once") was refined in back-and-forth that surfaced the
+  race between the availability read and the insert, settling on a DB-enforced invariant over
+  application-level locking.
+
+### Ensuring final code quality
+
+- **Objective backstops over subjective trust:** compiler + warnings-as-errors, NetArchTest module
+  boundaries, and the three-tier test suite (core logic / integration / architecture) — see [Test](#test).
+- **An independent review gate.** The final `/code-review` pass runs on a separate AI / fresh context
+  specifically so quality isn't judged by the model that wrote the code.
+- **Honest gaps.** Where docs and code diverged (events/outbox is designed in
+  [ADR-0002](docs/adrs/0002-events-for-inter-module-communication.md) but not yet implemented), the
+  divergence is called out in the [roadmap](system_design/DESIGN.md#roadmap--known-gaps) rather than
+  papered over.
+- **Reasoning preserved.** ADRs, PRDs, and per-issue plans capture my reasoning at each stage, so the
+  design intent is auditable regardless of how any individual line was produced.
+
 ## More documentation
 
 See [`CLAUDE.md`](CLAUDE.md) for detailed architecture notes and conventions, and [`docs/`](docs/)
