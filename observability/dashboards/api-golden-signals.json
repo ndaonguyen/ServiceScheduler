@@ -380,7 +380,7 @@
           "query": "label_values(http_server_request_duration_seconds_count, service_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
-        "refresh": 1,
+        "refresh": 2,
         "sort": 1,
         "type": "query"
       }

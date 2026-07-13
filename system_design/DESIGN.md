@@ -8,69 +8,12 @@ is the product, and the OpenAPI document at `/openapi/v1.json` is the client con
 
 This document covers the architecture, each component's role, the request/data flow, the technology
 choices and their justifications, the observability strategy, and how generative AI was used during
-design. It complements the [ADRs](adrs/) (which record the *decisions*) by describing the *system as
+design. It complements the [ADRs](../docs/adrs/) (which record the *decisions*) by describing the *system as
 built*.
 
 ---
 
-## 1. Architecture diagram
-
-```mermaid
-flowchart TB
-    Client([API client / probe])
-
-    subgraph Host["Host — AppointmentScheduler.Api (the only executable)"]
-        direction TB
-        Endpoints["Minimal-API endpoints<br/>/api/auth · /api/profile · /api/appointments · /health"]
-        Security["Security<br/>JWT (cookie) · Identity · refresh tokens · CurrentUser"]
-        Mediator["In-process Mediator<br/>ISender + LoggingBehavior pipeline"]
-    end
-
-    subgraph Modules["Feature modules (one class library each)"]
-        direction LR
-        Booking["Booking<br/>Domain · Application · Infrastructure · Api"]
-        Fleet["Fleet<br/>vehicles · dealerships · bays"]
-        Workforce["Workforce<br/>technicians · qualifications"]
-        Catalog["Catalog<br/>service types"]
-    end
-
-    subgraph Contracts["*.Contracts — public cross-module surface"]
-        direction LR
-        Ports["Query ports<br/>IServiceBayLookup · IServiceTypeLookup<br/>IVehicleOwnershipQuery · IQualifiedTechnicianLookup"]
-    end
-
-    subgraph BB["BuildingBlocks (shared, module-agnostic)"]
-        direction LR
-        SharedKernel["SharedKernel<br/>Entity&lt;TId&gt; · IAggregateRoot<br/>IValueObject · Guard"]
-        Messaging["Messaging<br/>Mediator · ICurrentUser"]
-        Persistence["Persistence<br/>AppDbContext · Identity · Migrations"]
-    end
-
-    DB[("PostgreSQL<br/>schemas: booking · fleet<br/>workforce · catalog · identity")]
-    OTel[["Grafana LGTM stack<br/>OTLP :4317 · Grafana UI :3000<br/>Loki (logs) · Mimir (metrics)<br/>Tempo (traces)"]]
-
-    Client -->|HTTPS + httpOnly cookies| Endpoints
-    Endpoints --> Security
-    Endpoints -->|Send request| Mediator
-    Mediator -->|resolves handler| Booking
-    Booking -.->|cross-module reads| Ports
-    Ports -.->|implemented by| Fleet & Workforce & Catalog
-    Booking & Fleet & Workforce & Catalog --> Persistence
-    Persistence --> DB
-    Host -->|traces · metrics · logs| OTel
-
-    Booking --> SharedKernel
-    Booking --> Messaging
-```
-
-**Reference-graph rule (compiler-enforced):** `BuildingBlocks*` ← `*.Contracts` ← `<Module>` ←
-`Host`. A module references its own `Contracts`, the `BuildingBlocks`, and *other modules' `Contracts`
-only* — never another module's implementation. A [NetArchTest](../tests/AppointmentScheduler.ArchitectureTests)
-suite fails the build if that boundary is crossed.
-
----
-
-## 2. Component roles
+## 1. Component roles
 
 | Component | Project | Role |
 |---|---|---|
@@ -87,7 +30,7 @@ suite fails the build if that boundary is crossed.
 
 ---
 
-## 3. Data flow
+## 2. Data flow
 
 ### Request pipeline (write path — "book an appointment")
 
@@ -174,24 +117,24 @@ on startup, production runs migrations as a deliberate deploy step.
 
 ---
 
-## 4. Technology choices & justifications
+## 3. Technology choices & justifications
 
 | Choice | Why | Reference |
 |---|---|---|
 | **.NET 10 / C# 14** | Modern LTS-track runtime; records, minimal APIs, and `TimeProvider` make the DDD + testable-time style concise. Common properties are centralized in `Directory.Build.props`, warnings-as-errors on. | — |
-| **Modular monolith** (not microservices) | One deployable to operate, test, and debug, while still enforcing hard internal boundaries. Modules are extraction-ready, so we get microservice *design discipline* without the distributed-systems *tax* prematurely. | [ADR-0001](adrs/0001-modular-monolith.md) |
-| **Project-per-module** | Boundaries become a **compile error**, not a convention — a module physically cannot reference another module's internals. Backed by NetArchTest as a runtime backstop. | [ADR-0006](adrs/0006-project-per-module-physical-structure.md) |
-| **PostgreSQL** (over a document DB) | The core invariant is *no overlapping bookings for a bay/technician* — a multi-row, concurrent constraint. Postgres enforces it declaratively with `EXCLUDE … USING gist` (with `btree_gist`), which a document store cannot. Relational integrity + transactions fit the domain. | [ADR-0005](adrs/0005-postgresql-over-document-database.md) |
+| **Modular monolith** (not microservices) | One deployable to operate, test, and debug, while still enforcing hard internal boundaries. Modules are extraction-ready, so we get microservice *design discipline* without the distributed-systems *tax* prematurely. | [ADR-0001](../docs/adrs/0001-modular-monolith.md) |
+| **Project-per-module** | Boundaries become a **compile error**, not a convention — a module physically cannot reference another module's internals. Backed by NetArchTest as a runtime backstop. | [ADR-0006](../docs/adrs/0006-project-per-module-physical-structure.md) |
+| **PostgreSQL** (over a document DB) | The core invariant is *no overlapping bookings for a bay/technician* — a multi-row, concurrent constraint. Postgres enforces it declaratively with `EXCLUDE … USING gist` (with `btree_gist`), which a document store cannot. Relational integrity + transactions fit the domain. | [ADR-0005](../docs/adrs/0005-postgresql-over-document-database.md) |
 | **EF Core 10 + Npgsql** | Productive mapping with `IEntityTypeConfiguration` per aggregate, LINQ overlap queries that translate to SQL, and first-class migrations. Schema-per-module keeps ownership explicit. | — |
 | **Vertical-slice CQRS + tiny in-process mediator** | Each feature is one self-contained request/handler file; the mediator adds cross-cutting behavior (logging, and later validation/metrics) without a heavyweight dependency. No MediatR keeps the surface small and licensing-free. | — |
 | **FluentResults** | Business failures (`BookingError`) are values carrying a stable machine code + HTTP status — no exceptions for expected outcomes, and the endpoint needs no code→status mapping table. | — |
-| **JWT in httpOnly cookies + ASP.NET Core Identity** | Cookie transport is XSS-safe (tokens unreadable by JS) and, with `SameSite=Strict`, CSRF-safe without a separate token. Short-lived access token (15 min default) + rotating, reuse-detecting refresh token (**configured TTL, defaulting to 7 days from original login — not reset on rotation**). Identity gives a battle-tested user store, PBKDF2 hashing, RBAC, and lockout. | [authentication.md](authentication.md) |
+| **JWT in httpOnly cookies + ASP.NET Core Identity** | Cookie transport is XSS-safe (tokens unreadable by JS) and, with `SameSite=Strict`, CSRF-safe without a separate token. Short-lived access token (15 min default) + rotating, reuse-detecting refresh token (**configured TTL, defaulting to 7 days from original login — not reset on rotation**). Identity gives a battle-tested user store, PBKDF2 hashing, RBAC, and lockout. | [authentication.md](../docs/authentication.md) |
 | **OpenTelemetry** | Vendor-neutral traces, metrics, and logs over OTLP — swap the backend (Grafana LGTM, Jaeger, Prometheus, a SaaS) without code changes. Backend-agnosticism is not theoretical here: the local stack was swapped from the .NET Aspire dashboard to Grafana LGTM with **only a `docker-compose.yml` edit** — zero application code touched. | §5 |
 | **xUnit + AwesomeAssertions + NetArchTest** | Unit tests for handlers, `WebApplicationFactory` integration tests over real HTTP, and architecture tests that make the design rules self-verifying. | [../tests](../tests) |
 
 ---
 
-## 5. Observability strategy
+## 4. Observability strategy
 
 Observability is wired in `Program.cs` and follows the three pillars, plus health probes.
 
@@ -250,7 +193,7 @@ from Prometheus so the dashboard scales to multiple services on the same OTLP en
 
 ---
 
-## 6. How generative AI assisted the design phase
+## 5. How generative AI assisted the design phase
 
 GenAI (Claude) was used as a **design collaborator and reviewer**, with the human as the decision-maker
 and automated checks as the objective backstop. Concretely:
@@ -258,9 +201,9 @@ and automated checks as the objective backstop. Concretely:
 - **Decision framing → ADRs.** For each significant fork (monolith vs microservices, relational vs
   document store, project-per-module physical layout, events for inter-module comms), the AI drafted
   the option space, trade-offs, and consequences, which were then edited and committed as the
-  [ADRs](adrs/). The AI accelerated *articulating* the rationale; the *choices* were human-owned.
+  [ADRs](../docs/adrs/). The AI accelerated *articulating* the rationale; the *choices* were human-owned.
 - **Domain modeling.** It helped shape the tactical-DDD vocabulary — where the aggregate boundary sits
-  (`Appointment` as the scheduling source of truth, [ADR-0003](adrs/0003-appointment-as-scheduling-source-of-truth.md)),
+  (`Appointment` as the scheduling source of truth, [ADR-0003](../docs/adrs/0003-appointment-as-scheduling-source-of-truth.md)),
   which types are entities vs value objects (`TimeSlot`, `Vin`), and how to express invariants as
   factory guards rather than anemic setters.
 - **Concurrency design.** The "read availability, then let the database arbitrate via `EXCLUDE`

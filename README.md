@@ -226,5 +226,5 @@ Health checks: `/health/live` (liveness), `/health/ready` (readiness, checks the
 
 See [`CLAUDE.md`](CLAUDE.md) for detailed architecture notes and conventions, and [`docs/`](docs/)
 for ADRs, design specs, and per-issue plans/PRDs. The
-[design doc](docs/design.md) covers the design rationale, the observability strategy, and how
+[design doc](system_design/DESIGN.md) covers the design rationale, the observability strategy, and how
 generative AI (Claude) was used as a collaborator during the design phase.
